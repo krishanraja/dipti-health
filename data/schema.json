@@ -1,0 +1,171 @@
+{
+  "_comment": "Canon sheet schema, generated from apps-script/Code.gs by scripts/schema.mjs. NO patient data: live values live only in the private Google Sheet.",
+  "tabs": {
+    "Meta": {
+      "mode": "overwrite",
+      "headers": [
+        "Key",
+        "Value"
+      ]
+    },
+    "Profile": {
+      "mode": "overwrite",
+      "headers": [
+        "Key",
+        "Value",
+        "Source",
+        "UpdatedAt",
+        "Verified"
+      ]
+    },
+    "Priorities": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Rank",
+        "Title",
+        "Status",
+        "WhyItMatters",
+        "Plan",
+        "NextStep",
+        "AskWhom",
+        "UpdatedAt"
+      ]
+    },
+    "Conditions": {
+      "mode": "overwrite",
+      "headers": [
+        "Condition",
+        "Status",
+        "Since",
+        "Evidence",
+        "Notes",
+        "Source",
+        "UpdatedAt"
+      ]
+    },
+    "Medications": {
+      "mode": "overwrite",
+      "headers": [
+        "Name",
+        "Generic",
+        "Dose",
+        "Timing",
+        "Prescribed8Oct",
+        "Purpose",
+        "Status",
+        "Source",
+        "UpdatedAt"
+      ]
+    },
+    "TestResults": {
+      "mode": "append",
+      "headers": [
+        "Date",
+        "Test",
+        "Result",
+        "Range",
+        "Lab",
+        "Notes",
+        "Source"
+      ]
+    },
+    "CheckIns": {
+      "mode": "append",
+      "headers": [
+        "TimestampUTC",
+        "TimestampLocal",
+        "By",
+        "Tooth",
+        "Abdomen",
+        "Fatigue",
+        "Sleep",
+        "Bowels",
+        "Mood",
+        "Verdict",
+        "Notes"
+      ]
+    },
+    "Questions": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Question",
+        "AskWhom",
+        "Priority",
+        "Status",
+        "Answer",
+        "UpdatedAt"
+      ]
+    },
+    "KnowledgeGaps": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Gap",
+        "WhatAnswersIt",
+        "StepToClose",
+        "Status",
+        "UpdatedAt"
+      ]
+    },
+    "Clinicians": {
+      "mode": "overwrite",
+      "headers": [
+        "Name",
+        "Role",
+        "Owns",
+        "Contact",
+        "LastSeen",
+        "Notes"
+      ]
+    },
+    "Evidence": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Kind",
+        "Title",
+        "Severity",
+        "Grade",
+        "AppliesWhen",
+        "Entities",
+        "AskYourDoctor",
+        "Text",
+        "Sources"
+      ]
+    },
+    "Sources": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Type",
+        "Grade",
+        "Title",
+        "Year",
+        "URL"
+      ]
+    },
+    "Notes": {
+      "mode": "append",
+      "headers": [
+        "TimestampUTC",
+        "By",
+        "Text",
+        "Tag"
+      ]
+    },
+    "Changelog": {
+      "mode": "append",
+      "headers": [
+        "TimestampUTC",
+        "Tab",
+        "Key",
+        "OldValue",
+        "NewValue",
+        "By",
+        "Source"
+      ]
+    }
+  }
+}

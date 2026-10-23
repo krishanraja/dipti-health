@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Steady">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="Steady">
+<title>Steady</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/dipti.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<section id="login" class="login" hidden>
+  <div class="login-card" id="loginCode">
+    <img class="app-icon" src="/icon.svg" alt="" width="88" height="88">
+    <h1>Steady</h1>
+    <p class="soft">Your health, in one calm place.</p>
+    <form id="loginForm" autocomplete="off">
+      <label for="code" class="sr">Passcode</label>
+      <input id="code" type="password" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="Passcode" required>
+      <button class="btn primary" type="submit">Come in</button>
+      <p id="loginMsg" class="msg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+  <div class="login-card who" id="loginWho" hidden>
+    <div id="whoPick">
+      <h1>Who's using this?</h1>
+      <p class="soft">Your name shows next to what you add, so Dipti always knows who did what.</p>
+      <div class="who-list"></div>
+    </div>
+    <form id="whoName" hidden>
+      <h1>What should we call you?</h1>
+      <label for="nameInput" class="sr">Your first name</label>
+      <input id="nameInput" maxlength="40" autocomplete="given-name" placeholder="First name">
+      <button class="btn primary" type="submit">Continue</button>
+    </form>
+  </div>
+</section>
+
+<!-- APP -->
+<main id="app" hidden>
+  <header class="top">
+    <span class="brand"><img src="/icon.svg" alt="" width="28" height="28">Steady</span>
+    <nav class="toptabs" aria-label="Sections (wide screens)">
+      <button class="tt" data-go="today">Overview</button>
+      <button class="tt" data-go="record">Record</button>
+      <button class="tt" data-go="ask" data-ask-label>Ask</button>
+    </nav>
+    <span class="top-right">
+      <a id="sheetLink" class="sheet-link" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg><span>My Sheet</span></a>
+      <button id="sync" class="sync" type="button" aria-live="polite"><i></i><span>Connecting</span></button>
+      <button id="shareBtn" class="icon-btn" type="button" aria-label="Summary for a doctor"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></button>
+      <button id="gearBtn" class="icon-btn" type="button" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    </span>
+  </header>
+
+  <div class="stage">
+    <!-- TODAY (phone) / OVERVIEW (wide screens) -->
+    <section class="view" id="view-today" data-view="today">
+      <div class="today" id="today"></div>
+    </section>
+
+    <!-- RECORD -->
+    <section class="view" id="view-record" data-view="record" hidden>
+      <div class="rec" id="rec"></div>
+    </section>
+
+    <!-- ASK THE DOCTOR -->
+    <section class="view chat-view" id="view-ask" data-view="ask" hidden>
+      <div class="chat" id="chat"></div>
+    </section>
+  </div>
+
+  <nav class="nav" aria-label="Sections">
+    <button class="nav-btn" data-go="today" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="10" r="4"/><path d="M3 18c3-2.5 6-2.5 9 0s6 2.5 9 0"/></svg><span>Today</span></button>
+    <button class="nav-btn" data-go="record">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>My record</span></button>
+    <button class="nav-btn" data-go="ask">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg><span data-ask-label>Ask</span></button>
+  </nav>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

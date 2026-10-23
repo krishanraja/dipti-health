@@ -1,0 +1,19 @@
+# Secrets and patient data: NEVER commit
+.env
+.env.*
+*.secret
+*secret*
+*.pdf
+*.docx
+*.xlsx
+*.xls
+*.csv
+*.sqlite
+*.jsonl
+seed/
+record*.json
+canon*.json
+knowledge_base*.json
+.DS_Store
+node_modules/
+.vercel

@@ -1,0 +1,90 @@
+# Steady
+
+Dipti's personal health companion. It runs on her phone and in a fuller desktop overview. Her private Google Sheet is the record: the app reads it and writes to it, and she can open the Sheet herself at any time.
+
+It is built on the design system, architecture and mission of Beside (`krishanraja/kimon`), adapted for Dipti's conditions and priorities.
+
+## What it does
+
+- **Today (phone).** Shows her top three priorities, each with one next step. It also has a 30-second check-in that scores tooth pain, tummy pain and tiredness from 0 to 10 and records sleep, bowels and mood. From here she can log a symptom, photograph a result, or tick her tablets.
+- **Overview (screens 1024 px and wider).** One screen in three columns:
+  - Now: priorities, check-in trends, and questions grouped by doctor.
+  - Medicines: her current list side by side with the last written prescription.
+  - Trends: lab results over time.
+
+  Clicking any card opens its detail and the graded evidence behind it.
+- **Record.** Priorities, medicines, results, questions, things to clear up, doctors, conditions and history. Each section links to its tab in the Sheet.
+- **Ask Dr Ellie.** A chat with a young English GP who knows her whole record and the research pack in her Sheet. Replies are streamed. She can use voice or a photo.
+- **Summary for a doctor.** Pick a doctor and get a short brief with only what that doctor looks after and only the questions for them.
+
+### How it behaves
+
+- **Calm and proportionate.** Every log and reply gives one "how much to worry" level and one next step. It never lists rare possibilities. A repeat question within a day is answered by pointing back to the plan. Lists of "possible causes" in the research pack are for the doctor's reasoning and are never shown on screen.
+- **Never under-calls a real red flag.**
+  - Deterministic rules run before any AI. They cover steroid sick-day signs, dental infection, liver and gut warning signs, collapse, and medicine reactions.
+  - The AI can raise urgency but never lower it.
+  - Emergency numbers are given for India (112, 108) and the UK (999, 111).
+- **Never changes medicines.** Where her list and her prescription differ, the app asks her to confirm with the prescriber.
+
+## Who sees what
+
+| Code (Vercel env) | Opens as | Writes are credited to |
+|---|---|---|
+| `DIPTI_CODE` | Dipti | Always "Dipti" |
+| `ACCESS_CODE` | Family helping out (Krish). The device asks who is using it | That person's name |
+
+## Architecture
+
+```
+phone / laptop ──► Vercel (public/ static app + api/ functions)
+                     │   /api/canon, /api/write ──► Apps Script web app ──► Dipti's Google Sheet (the record)
+                     │   /api/ask, /api/photo   ──► Claude via Vercel AI Gateway (record + research pack + knowledge/)
+                     │   /api/transcribe        ──► OpenAI speech-to-text (OPENAI_API_KEY)
+```
+
+- **The Sheet** holds everything personal: profile, priorities, conditions, medicines, results, check-ins, questions, gaps, doctors, notes, the change log, and the research pack (`Evidence` and `Sources` tabs). The tab schema is defined in `apps-script/Code.gs`; `data/schema.json` is generated from it.
+- **`knowledge/`** holds general, non-personal evidence only. At present that is `dental-evidence.md`, with 30 graded references.
+
+## Set it up (one time, Krish)
+
+1. **Make the Sheet.**
+   1. Upload `Dipti-canon.xlsx` to your Google Drive. It is built from her record by `scripts/build_seed.py` and is kept outside this repo.
+   2. Open it with Google Sheets, then choose File › Save as Google Sheets.
+2. **Add the API.**
+   1. In the Sheet, open Extensions › Apps Script.
+   2. Paste `apps-script/Code.gs` and save.
+   3. Run `setup()` once and approve the permissions. The execution log prints the secret.
+   4. Choose Deploy › New deployment › Web app, with Execute as: Me and Who has access: Anyone. Copy the `/exec` URL.
+3. **Create the Vercel project** from this GitHub repo. No build step is needed.
+4. **Set the environment variables** in Vercel:
+
+   | Variable | What it is |
+   |---|---|
+   | `SHEET_API_URL` | The Apps Script `/exec` URL |
+   | `SHEET_API_SECRET` | The secret `setup()` printed |
+   | `SESSION_SECRET` | At least 32 random characters |
+   | `DIPTI_CODE` | Dipti's passcode |
+   | `ACCESS_CODE` | The family passcode (Krish) |
+   | `PEOPLE` | Optional, e.g. `[{"name":"Dipti","patient":true},{"name":"Krish"}]` |
+   | `OPENAI_API_KEY` | Voice to text |
+   | `ANTHROPIC_API_KEY` | Optional. Without it the app uses the Vercel AI Gateway through the deployment's OIDC token |
+
+5. **Share the Sheet** with Dipti as an editor.
+
+## Develop
+
+```
+npm install
+npm test                                     # unit tests
+node scripts/simulate.mjs                    # Dipti + Krish end to end against the real Code.gs (emulated)
+MOCK_SHEET=1 MOCK_AI=1 node scripts/dev-server.mjs   # http://localhost:3000, codes "dipti-local" / "local"
+node scripts/schema.mjs                      # regenerate data/schema.json after changing TABS in Code.gs
+python3 -I scripts/build_seed.py <record.json> <kb dir> <out dir>   # rebuild the seed workbook (data stays outside the repo)
+```
+
+## This repo is public: never commit personal data
+
+- Her record, the research pack, the seed workbook, PDFs and transcripts never go into git.
+- Tests and fixtures use invented names and values only.
+- `.gitignore` blocks the obvious file types.
+- Before pushing, grep for her surname, her doctors' names, her medicine brands and her lab values.
