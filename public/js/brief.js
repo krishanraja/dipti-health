@@ -3,6 +3,7 @@
 // questions; for "any doctor" it covers everything. Pure; unit tested.
 import { fmtDate, resultCards } from './metrics.js';
 import { priorities, medicines, questionsByDoctor } from './record-model.js';
+import { appointments, dayOf } from './facts-model.js';
 
 const has = (hay, needle) => String(hay || '').toLowerCase().includes(String(needle || '').toLowerCase());
 
@@ -27,6 +28,9 @@ export function briefText(canon = {}, { doctor = null, today = new Date() } = {}
   L.push('MEDICINES I TAKE NOW');
   m.current.length ? m.current.forEach(x => L.push(`- ${x.name}${x.generic ? ' (' + x.generic + ')' : ''} ${x.dose} ${x.timing}`.replace(/\s+/g, ' ').trimEnd() + (x.differs ? ` [differs from my last prescription: ${x.rx || 'not on it'}]` : ''))) : L.push('- none recorded');
   if (m.differ) L.push(`Please confirm the ${m.differ} marked medicine${m.differ === 1 ? '' : 's'}.`);
+  // How fresh the list is: the oldest "still right" check among them.
+  const checked = m.current.map(x => x.checked).filter(Boolean).map(d => fmtDate(d, { year: true })).filter(Boolean);
+  if (m.current.length && checked.length === m.current.length) L.push(`I last confirmed this list on ${checked.sort((a, b) => Date.parse(a) - Date.parse(b))[0]}.`);
 
   const rc = resultCards(c.testResults || []);
   if (rc.length) {
@@ -35,6 +39,9 @@ export function briefText(canon = {}, { doctor = null, today = new Date() } = {}
   }
   const ci = (c.checkins || []).slice(-5);
   if (ci.length) { L.push('', 'MY RECENT SCORES (0 to 10)'); ci.forEach(x => L.push(`- ${fmtDate(x.tsUTC || x.tsLocal)}: tooth ${x.tooth}, tummy ${x.abdomen}, tiredness ${x.fatigue}, sleep ${x.sleep}`)); }
+
+  const ap = appointments(c, dayOf(today)).upcoming.filter(a => !doc || has(a.with, doc.name) || has(doc.name, a.with) || has(a.with, doc.role));
+  if (ap.length) { L.push('', 'COMING UP'); ap.slice(0, 3).forEach(a => L.push(`- ${fmtDate(a.date, { year: true })}${a.time ? ' ' + a.time : ''}: ${a.with}${a.for ? ' (' + a.for + ')' : ''}`)); }
 
   const groups = questionsByDoctor(c);
   const qs = doc ? groups.filter(g => has(g.who, doc.name) || has(g.who, doc.role)) : groups;

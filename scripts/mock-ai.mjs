@@ -25,6 +25,14 @@ function chat(msg, image, prompt) {
     evidence: [{ point: 'GGT is watched as a trend', ref: 'general' }], usedFromRecord: ['GGT above range before'],
     replies: ['Yes, save them', 'What does GGT mean?', 'Thanks'], learned: [], results: PHOTO_ROWS, limits: '',
   };
+  // "I stopped Medicine B" / "appointment moved": propose the Sheet change.
+  const stopped = /\bstopped ([a-z][\w -]{1,30}?)(?:\s+(?:today|yesterday|last \w+)|[.,!]|$)/i.exec(msg);
+  if (stopped) return {
+    reply: `Thanks for telling me. Stopping a medicine is something to check with the doctor who prescribed it, so ${you ? 'let them know' : 'Dipti should let them know'}. I can update the Sheet so the list stays right.`,
+    urgency: 'routine', doNow: ['Tell the prescriber you have stopped it.'], watchFor: [], askTheDoctor: ['Is it fine to stay off it?'],
+    evidence: [], usedFromRecord: [], replies: ['Yes, update it', 'Thanks'], learned: [], results: [], limits: '',
+    updates: [{ kind: 'medication', say: `Mark ${stopped[1].trim()} as stopped from today?`, payload: { name: stopped[1].trim(), status: 'stopped' } }],
+  };
   if (/swell/.test(m) && /(eye|neck)/.test(m)) return {
     reply: `This needs help now. Swelling spreading from a tooth towards the eye or neck can be a spreading infection. ${you ? 'Go' : 'Dipti should go'} to the nearest emergency department today.`,
     urgency: 'emergency', doNow: ['Go to the hospital emergency department now. Mention long-term steroids.'], watchFor: [], askTheDoctor: [],
@@ -60,7 +68,7 @@ function chat(msg, image, prompt) {
 export async function mockComplete({ system, user, onProgress = () => {}, onText = () => {}, web }) {
   const { msg, image, text: prompt } = latest(user);
   let out;
-  if (/"kind":/.test(system)) out = { kind: 'lab report', summary: 'A liver and sugar blood test from 2 November. Both are better than before.', results: PHOTO_ROWS, unreadable: '' };
+  if (/"unreadable": "/.test(system)) out = { kind: 'lab report', summary: 'A liver and sugar blood test from 2 November. Both are better than before.', results: PHOTO_ROWS, unreadable: '' };
   else {
     if (web && /cost|price|where/i.test(msg)) { onProgress({ kind: 'search' }); await sleep(300); onProgress({ kind: 'results', n: 5 }); }
     await sleep(400);

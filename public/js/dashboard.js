@@ -11,6 +11,7 @@ import { entitiesIn, related, sourcesFor, GRADE_LABEL } from './evidence.js';
 import { DOCTOR } from './persona.js';
 import { pager, autoPages } from './pager.js';
 import { openSheet } from './record.js';
+import { factsToday, nextAppointment, whenText } from './facts-model.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
@@ -51,15 +52,21 @@ export function renderDashboard(el, context) {
   const cards = resultCards(canon.testResults || []);
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
   const AREAS = [['tooth', 'Tooth'], ['abdomen', 'Tummy'], ['fatigue', 'Tiredness']];
+  const facts = factsToday(canon);
+  const next = nextAppointment(canon);
 
   // Each column: fixed cards, plus one card that pages when the window is short.
   root.innerHTML = `<div class="dash">
     <section class="col">
-      <div class="dash-hello"><h1>${you ? 'Hello Dipti' : `Hello ${esc(ctx.me().name || '')}`}</h1><p>${esc(date)}</p></div>
-      <article class="dcard flex">
+      <div class="dash-hello"><h1>${you ? 'Hello Dipti' : `Hello ${esc(ctx.me().name || '')}`}</h1><p>${esc(date)}${next ? ` · <b>Next:</b> ${esc(next.with)}, ${esc(whenText(next.date, next.time))}` : ''}</p></div>
+      <article class="dcard flex prio-card">
         <p class="kicker">${you ? 'Your' : "Dipti's"} priorities</p>
         <div class="dlist" data-list="prios"></div>
       </article>
+      ${facts.length ? `<article class="dcard flex facts-card">
+        <div class="dc-head"><p class="kicker">Still right?</p><span class="soft small">${facts.length} quick check${facts.length === 1 ? '' : 's'}</span></div>
+        <div class="dlist" data-list="facts"></div>
+      </article>` : ''}
       <article class="dcard">
         <div class="dc-head"><p class="kicker">Today's check-in</p>${checkedToday ? '<span class="ok-text">Done ✓</span>' : ''}</div>
         <div class="scores">${AREAS.map(([k, l]) => { const s = scoreSeries(canon, k); return `<div class="score-mini"><span>${l}</span><b>${s.length ? s[s.length - 1].value : '–'}<small>/10</small></b>${spark(s, { w: 90, h: 26, min: 0, max: 10 })}</div>`; }).join('')}</div>
@@ -107,8 +114,9 @@ export function renderDashboard(el, context) {
       <i class="chip ${cardLabel(c).tone}">${esc(cardLabel(c).text || '–')}</i>
     </button>`),
   };
+  lists.facts = facts.map((f, i) => `<button class="dq" data-fact="${i}"><span>${esc(f.question)}</span>${f.says ? `<small>${esc(f.says)}</small>` : ''}</button>`);
   lists.gaps = gaps.map(g => `<button class="dq" data-g="${esc(g.id)}"><span>${esc(g.gap)}</span></button>`);
-  const EMPTY = { gaps: 'Nothing open.', prios: 'No priorities yet. Add them in the Priorities tab of the Sheet.', meds: 'No medicines in the Sheet yet.', qs: 'No open questions.', results: 'No results yet.' };
+  const EMPTY = { facts: 'All checked.', gaps: 'Nothing open.', prios: 'No priorities yet. Add them in the Priorities tab of the Sheet.', meds: 'No medicines in the Sheet yet.', qs: 'No open questions.', results: 'No results yet.' };
   root.querySelectorAll('[data-list]').forEach(el => {
     const k = el.dataset.list;
     pager(el, (lists[k].length ? lists[k] : [`<p class="soft">${EMPTY[k]}</p>`]).map(html => ({ html })), { label: k });
@@ -116,10 +124,11 @@ export function renderDashboard(el, context) {
 
   // One delegated listener: list items are redrawn on every page turn.
   root.onclick = e => {
-    const t = e.target.closest('[data-p], [data-check], [data-log], [data-meds], [data-q], [data-g], [data-m], [data-r], [data-more]');
+    const t = e.target.closest('[data-fact], [data-p], [data-check], [data-log], [data-meds], [data-q], [data-g], [data-m], [data-r], [data-more]');
     if (!t) return;
     const d = t.dataset;
-    if (d.p !== undefined) ctx.openPriority(d.p);
+    if (d.fact !== undefined) ctx.factFlow(facts.slice(+d.fact));
+    else if (d.p !== undefined) ctx.openPriority(d.p);
     else if (d.check !== undefined) ctx.startCheckin();
     else if (d.log !== undefined) ctx.logSymptom();
     else if (d.meds !== undefined) ctx.tablets();

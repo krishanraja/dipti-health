@@ -33,6 +33,9 @@ Endpoints:
   - `gap {id?, gap?, whatAnswersIt?, stepToClose?, status open|in-progress|closed?}`
   - `priority {id?, title?, rank?, status now|waiting|better|done?, why?, plan?, nextStep?, askWhom?}`
   - `clinician {name, role?, owns?, contact?, lastSeen?, notes?}`
+  - `appointment {id?, date YYYY-MM-DD?, time?, with?, where?, for?, status booked|done|moved|cancelled?, notes?, checked?}`: a new one needs `date` and `with`; with `id` it updates that row.
+  - `check {tab Medications|Priorities|Appointments, key}`: the fact checker's "still right". Sets `CheckedAt` to today and logs it. `key` is the medicine name or the row id.
+  - Any of `medication`, `priority` or `appointment` with `checked: true` also sets `CheckedAt` (a change made from a fact check counts as checked).
   - `profile {key, value}`
   - `condition {name, status long-term|watching|settled?, notes?, since?, evidence?, aliases?, plain?}`
   - `medication {name, generic?, dose?, timing?, rx?, purpose?, status current|stopped|check?}`
@@ -40,6 +43,12 @@ Endpoints:
 Every edit to an overwrite tab is written to `Changelog` with who made it.
 
 Columns are found by their header text in row 1, not by position. `setup()` adds any header in `TABS` that a tab is missing, at the end.
+
+## Fact checker
+
+- `Appointments` tab: `ID, Date, Time, With, Where, For, Status, Notes, UpdatedAt, CheckedAt`.
+- `CheckedAt` on `Medications`, `Priorities` and `Appointments`: the last day she said the row is still right. A row comes up for checking again after 7 days (`public/js/facts-model.js`).
+- `POST /api/ask` answers may carry `updates[{kind, action, say, payload}]`: changes Ellie heard in the message, already checked on the server (`lib/updates.js`). The app writes one only when she taps Yes.
 
 ## Tabs added for Conditions
 

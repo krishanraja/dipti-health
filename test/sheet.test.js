@@ -44,3 +44,30 @@ test('a write to a column that is missing says to run setup()', () => {
   assert.equal(w.ok, false);
   assert.match(w.error, /run setup\(\)/);
 });
+
+test('fact checker writes: appointments, a check, and a change that counts as checked', () => {
+  const api = createSheetApi({ secret: 's' });
+  const post = (action, payload, by = 'Dipti') => api.post({ secret: 's', action, by, payload });
+  assert.equal(post('appointment', { with: 'Dr X' }).ok, false); // a date is needed
+  const a = post('appointment', { date: '2026-11-02', time: '10:30', with: 'Dr X', for: 'Tooth' });
+  assert.equal(a.id, 'A1');
+  assert.equal(post('appointment', { id: 'A1', status: 'nope' }).ok, false);
+  assert.equal(post('appointment', { id: 'A1', date: '2026-11-04', checked: true }).ok, true);
+  post('medication', { name: 'Med Q', dose: '5 mg' });
+  const c = post('check', { tab: 'Medications', key: 'med q' });
+  assert.equal(c.ok, true);
+  assert.equal(post('check', { tab: 'Notes', key: 'x' }).ok, false);
+  const canon = api.get({ secret: 's', action: 'read' });
+  assert.equal(canon.appointments[0].date.slice(0, 10).length, 10);
+  assert.ok(canon.appointments[0].checked);
+  assert.ok(canon.medications[0].checked);
+  assert.ok(canon.changelog.some(x => x.key === 'Med Q.checked' && x.by === 'Dipti'));
+});
+
+test('a Sheet without the new Appointments tab still reads, and setup() adds it', () => {
+  const api = createSheetApi({ secret: 's' });
+  delete api.tabs.Appointments;
+  assert.deepEqual(api.get({ secret: 's', action: 'read' }).appointments, []);
+  api.setup();
+  assert.ok(api.tabs.Appointments);
+});

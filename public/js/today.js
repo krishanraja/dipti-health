@@ -6,6 +6,7 @@ import { SYMPTOMS, WHEN, SEVERITY, TAGS, WORRY, symptomLevel, noteText, localDay
 import { CONTACTS_SELF, CONTACTS, SICK_DAY } from './triage.js';
 import { DOCTOR } from './persona.js';
 import { renderDashboard } from './dashboard.js';
+import { factsToday, writesFor, needsEdit, applyLocal, nextAppointment, whenText, dayOf } from './facts-model.js';
 
 let ctx, root, flowOpen = false;
 const $ = (s, el = root) => el.querySelector(s);
@@ -24,7 +25,7 @@ const you = () => ctx.me().dipti;
 
 function render() {
   const canon = ctx.canon();
-  if (ctx.isWide()) { root.classList.add('wide'); return renderDashboard(root, { ...ctx, openPriority, startCheckin, logSymptom, tablets }); }
+  if (ctx.isWide()) { root.classList.add('wide'); return renderDashboard(root, { ...ctx, openPriority, startCheckin, logSymptom, tablets, factFlow }); }
   root.classList.remove('wide');
   if (!canon) {
     root.innerHTML = `<div class="rec-empty"><p class="kicker">Today</p><h3>${ctx.session().sheetConfigured === false ? 'The Sheet is not connected yet' : 'Loading your record'}</h3></div>`;
@@ -39,9 +40,11 @@ function render() {
   const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
   const name = you() ? 'Dipti' : ctx.me().name || '';
+  const next = nextAppointment(canon);
+  const facts = factsToday(canon);
 
   root.innerHTML = `<div class="fit today-home">
-    <div class="hello"><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}</h1><p class="drop">${esc(date)}</p></div>
+    <div class="hello"><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}</h1><p class="${next ? '' : 'drop'}">${next ? `<b>Next:</b> ${esc(next.with)}, ${esc(whenText(next.date, next.time))}` : esc(date)}</p></div>
     <p class="kicker">${you() ? 'Your' : "Dipti's"} priorities</p>
     <div class="prios">${pr.map((p, i) => `<button class="prio ${i === 0 ? 'lead' : ''}" data-p="${esc(p.id)}">
         <span class="prio-top"><span class="prio-n">${i + 1}</span><b>${esc(p.title)}</b><i class="chip ${p.statusInfo.tone}">${esc(p.statusInfo.label)}</i></span>
@@ -50,6 +53,7 @@ function render() {
     ${checkedToday
       ? `<button class="kc checkin done" data-check><span><small>Today's check-in ✓</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
       : `<button class="kc checkin" data-check><span><small>30 seconds</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
+    ${facts.length ? `<button class="kc facts" data-facts><span><small>Still right? · ${facts.length} quick check${facts.length === 1 ? '' : 's'}</small><b>${esc(facts[0].question)}</b></span>${CHEV}</button>` : ''}
     <div class="quick">
       <button class="qk" data-log>${PLUS}<span>Log a symptom</span></button>
       <button class="qk" data-photo>${CAM}<span>Photo of a result</span></button>
@@ -61,6 +65,7 @@ function render() {
   $('[data-log]').onclick = logSymptom;
   $('[data-photo]').onclick = () => ctx.addPhoto();
   $('[data-meds]').onclick = tablets;
+  root.querySelector('[data-facts]')?.addEventListener('click', () => factFlow(facts));
   requestAnimationFrame(() => ctx.fit($('.fit')));
 }
 
@@ -247,6 +252,68 @@ function logResult(log, ok) {
     <div class="row"><button class="btn" data-ask>Ask ${esc(DOCTOR.name)}</button><button class="btn primary grow" data-x>Done</button></div>`, l => {
     l.querySelector('[data-ask]').onclick = () => { closeFlow(); ctx.openAsk(`I just logged: ${SYMPTOMS.find(s => s.id === log.symptom).label.toLowerCase()}, ${log.severity}${log.note ? ', ' + log.note : ''}. What should I do?`); };
   });
+}
+
+/* ---------- the fact checker: "still right?" ---------- */
+// One fact a screen: the question, what the Sheet says, and a tap to answer.
+// A change asks for the new details on a second screen. Writes go to the
+// Sheet straight away and to the device's copy, so nothing is asked twice.
+export function factFlow(list) {
+  if (!list?.length) return;
+  let i = 0, worse = [];
+  const total = list.length;
+  const apply = async (f, answer, edit) => {
+    const { writes, said, worse: w } = writesFor(f, answer, edit);
+    const canon = ctx.canon();
+    if (canon) applyLocal(canon, writes);
+    if (w) worse.push(f);
+    let queued = false;
+    for (const x of writes) {
+      const r = x.action === 'note' ? await ctx.addNote(x.payload.tag, x.payload.text) : await ctx.save(x.action, x.payload);
+      if (!r.ok) queued = true;
+    }
+    ctx.toast(queued ? 'Saved on this device, will sync' : said || 'Saved');
+    i++; step();
+  };
+  const step = () => {
+    if (i >= total) return done();
+    const f = list[i];
+    flow(`${head(i + 1, total)}<p class="kicker">Still right?</p><h1>${esc(f.question)}</h1>
+      ${f.says ? `<p class="soft">${esc(f.says)}</p>` : ''}
+      <div class="opts">${f.answers.map(([v, l]) => `<button class="o" data-a="${v}">${esc(l)}</button>`).join('')}</div>
+      <button class="btn ghost" data-skip>Not now</button>`, l => {
+      l.querySelector('[data-back]').onclick = () => { if (i === 0) closeFlow(); else { i--; step(); } };
+      l.querySelector('[data-skip]').onclick = () => { i++; step(); };
+      l.querySelectorAll('[data-a]').forEach(b => b.onclick = () => (needsEdit(f, b.dataset.a) ? editStep(f, b.dataset.a) : apply(f, b.dataset.a)));
+    });
+  };
+  const editStep = (f, answer) => {
+    const med = f.kind === 'med';
+    flow(`${head(i + 1, total)}<p class="kicker">${esc(med ? f.key : f.row.with)}</p><h1>${med ? 'What is it now?' : 'When is it now?'}</h1>
+      ${med
+        ? `<label class="kicker" for="fDose">Dose</label><input id="fDose" class="finput" value="${esc(f.row.dose)}" placeholder="e.g. 20 mg">
+           <label class="kicker" for="fTime">When</label><input id="fTime" class="finput" value="${esc(f.row.timing)}" placeholder="e.g. morning and night">`
+        : `<label class="kicker" for="fDate">New date</label><input id="fDate" class="finput" type="date" value="${esc(f.row.date)}">
+           <label class="kicker" for="fTime">Time (optional)</label><input id="fTime" class="finput" value="${esc(f.row.time)}" placeholder="e.g. 10:30">`}
+      <button class="btn primary" data-save>Save</button>`, l => {
+      l.querySelector('[data-back]').onclick = step;
+      l.querySelector('[data-save]').onclick = () => {
+        const v = id => l.querySelector(id)?.value.trim();
+        const edit = med ? { dose: v('#fDose'), timing: v('#fTime') } : { date: v('#fDate'), time: v('#fTime') };
+        if (!med && !/^\d{4}-\d{2}-\d{2}$/.test(edit.date || '')) { ctx.toast('Pick the new date'); return; }
+        apply(f, answer, edit);
+      };
+    });
+  };
+  const done = () => {
+    const w = worse[0];
+    flow(`<section class="kc level routine"><h1>${w ? 'Thanks. Noted.' : 'All checked ✓'}</h1>
+      <p>${w ? `You said ${esc(w.row.title.replace(/\s*\(.*?\)\s*/g, ' ').trim().toLowerCase())} is worse. Logging it gives ${esc(DOCTOR.first)} and your doctors the detail.` : `Your Sheet is up to date. Thank you${you() ? '' : ' for helping'}.`}</p></section>
+      <div class="row">${w ? `<button class="btn" data-log2>Log it</button>` : ''}<button class="btn primary grow" data-x>Done</button></div>`, l => {
+      l.querySelector('[data-log2]')?.addEventListener('click', () => { closeFlow(); logSymptom(); });
+    });
+  };
+  step();
 }
 
 // A mic button that adds what she says to a text box.

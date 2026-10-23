@@ -26,9 +26,10 @@ TODAY = '2026-10-23'
 COLS = {
     'Meta': ['key', 'value'],
     'Profile': ['key', 'value', 'source', 'updated', 'verified'],
-    'Priorities': ['id', 'rank', 'title', 'status', 'why', 'plan', 'nextStep', 'askWhom', 'updated'],
+    'Priorities': ['id', 'rank', 'title', 'status', 'why', 'plan', 'nextStep', 'askWhom', 'updated', 'checked'],
+    'Appointments': ['id', 'date', 'time', 'with', 'where', 'for', 'status', 'notes', 'updated', 'checked'],
     'Conditions': ['name', 'status', 'since', 'evidence', 'notes', 'source', 'updated', 'key', 'aliases', 'plain'],
-    'Medications': ['name', 'generic', 'dose', 'timing', 'rx', 'purpose', 'status', 'source', 'updated'],
+    'Medications': ['name', 'generic', 'dose', 'timing', 'rx', 'purpose', 'status', 'source', 'updated', 'checked'],
     'TestResults': ['date', 'test', 'result', 'range', 'lab', 'notes', 'source'],
     'CheckIns': ['tsUTC', 'tsLocal', 'by', 'tooth', 'abdomen', 'fatigue', 'sleep', 'bowels', 'mood', 'verdict', 'notes'],
     'Questions': ['id', 'question', 'askWhom', 'priority', 'status', 'answer', 'updated'],
@@ -39,7 +40,7 @@ COLS = {
     'Notes': ['tsUTC', 'by', 'text', 'tag'],
     'Changelog': ['ts', 'tab', 'key', 'old', 'new', 'by', 'source'],
 }
-CANON_KEY = {'Priorities': 'priorities', 'Conditions': 'conditions', 'Medications': 'medications', 'TestResults': 'testResults',
+CANON_KEY = {'Priorities': 'priorities', 'Appointments': 'appointments', 'Conditions': 'conditions', 'Medications': 'medications', 'TestResults': 'testResults',
              'CheckIns': 'checkins', 'Questions': 'questions', 'KnowledgeGaps': 'gaps', 'Clinicians': 'clinicians',
              'Evidence': 'evidence', 'Sources': 'sources', 'Notes': 'notes', 'Changelog': 'changelog'}
 
@@ -72,6 +73,11 @@ def build(record, kb_dir, plain):
     for i, (gap, what, step) in enumerate(record['gaps'], 1):
         c['gaps'].append({'id': f'G{i}', 'gap': gap, 'whatAnswersIt': what, 'stepToClose': step, 'status': 'open', 'updated': TODAY})
     c['clinicians'] = record['clinicians']
+    # Past visits on record become done appointments, so the list starts with history.
+    seen = sorted((d['lastSeen'], d['name']) for d in record['clinicians'] if d.get('lastSeen'))
+    for i, (date, name) in enumerate(seen, 1):
+        c['appointments'].append({'id': f'A{i}', 'date': date, 'time': '', 'with': name, 'where': '', 'for': '', 'status': 'done',
+                                  'notes': 'From the record', 'updated': TODAY, 'checked': TODAY})
     for date, text in record['symptoms']:
         c['notes'].append({'tsUTC': f'{date}T06:30:00.000Z', 'by': 'Dipti', 'text': f'REPORTED: {text}', 'tag': 'record'})
     for date, text in record['regimen']:

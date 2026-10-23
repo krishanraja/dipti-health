@@ -2,6 +2,15 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
+## 2026-10-23 (evening): the fact checker
+
+| # | Decision | By | Why / carry-forward |
+|---|---|---|---|
+| D18 | A fact checker: a few "still right?" checks a day on Today and the overview, not a weekly review | Krish | Her medicines, symptoms and appointments change a lot. Small and daily keeps the Sheet true without a chore. Every answer is something she adds herself, which is the North Star |
+| D19 | New Appointments tab; `CheckedAt` on medicines, priorities and appointments; 7 days until a fact is due again; past booked appointments first | Krish (tab), Claude (rules) | `public/js/facts-model.js` holds the order and is unit tested |
+| D20 | In chat, Ellie proposes Sheet updates and she confirms. Nothing is written without a tap | Krish | `lib/updates.js` drops anything she did not report, unknown rows, and anything but recording a change she made. Ellie never suggests changing a medicine |
+| D21 | Built without a mock | Krish | Inside the existing design system; reviewed in the working preview |
+
 ## 2026-10-23 (later): Conditions tab and no-scroll
 
 | # | Decision | By | Why / carry-forward |

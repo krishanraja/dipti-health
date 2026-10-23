@@ -3,6 +3,7 @@
 // the model), then a model reply grounded in her record, the research pack in
 // her Sheet and the general evidence corpus, streamed as it is written, then
 // the message is logged to the sheet and any new facts go into the bank.
+import { cleanUpdates } from '../lib/updates.js';
 import { requireAuth, byFor } from '../lib/auth.js';
 import { readCanon, write } from '../lib/sheet.js';
 import { corpus, retrieve, refsFor } from '../lib/knowledge.js';
@@ -36,6 +37,7 @@ export function patientContext(canon) {
     '## Test results (oldest first)', rows(canon.testResults, 120, t => `- ${t.date} ${t.test}: ${t.result}${t.range ? ' (range ' + t.range + ')' : ''}${t.notes ? ' ' + t.notes : ''}`),
     '## Recent check-ins, scores 0 to 10 (oldest first)', rows(canon.checkins, 8, c => `- ${c.tsLocal}: tooth=${c.tooth} tummy=${c.abdomen} tiredness=${c.fatigue} sleep=${c.sleep} bowels=${c.bowels} mood=${c.mood} -> ${c.verdict}. ${c.notes}`),
     '## Recent logs and notes (oldest first)', rows((canon.notes || []).filter(n => n.by !== 'claude-test' && !routine.test(n.tag)), 20, n => `- ${String(n.tsUTC).slice(0, 10)} [${n.tag}] by ${n.by}: ${String(n.text).replace(/\n(RID|DATA):[\s\S]*$/, '')}`),
+    '## Appointments (id, date, with, status)', rows([...(canon.appointments || [])].sort((a, b) => String(a.date).localeCompare(String(b.date))), 20, a => `- ${a.id} ${String(a.date).slice(0, 15)} ${a.time || ''} with ${a.with}${a.for ? ' for ' + a.for : ''} [${a.status || 'booked'}]`),
     '## Her doctors', rows(canon.clinicians, 20, c => `- ${c.name}: ${c.role}. Looks after: ${c.owns}${c.lastSeen ? '. Last seen ' + c.lastSeen : ''}`),
     '## Open questions for her doctors', rows((canon.questions || []).filter(q => q.status !== 'answered'), 25, q => `- ${q.id} (${q.askWhom}, p${q.priority}): ${q.question}`),
     '## Things in her record that disagree or are unknown', rows((canon.gaps || []).filter(g => g.status !== 'closed'), 20, g => `- ${g.id}: ${g.gap}. Settled by: ${g.whatAnswersIt}`),
@@ -71,6 +73,8 @@ The knowledge bank gets better with every chat. In "learned", record durable fac
 
 ${RESULTS_RULES}
 
+Keep her Sheet current. Her medicines, symptoms and appointments change often. When THE LATEST MESSAGE says something in her Sheet has changed, put the Sheet change in "updates" for her to confirm with one tap. Only what she reported: a medicine she has started, stopped, or now takes at a different dose or time; an appointment booked, moved, done or cancelled; a priority that has eased ("better") or is sorted ("done"). Use the names and ids in her record above. "say" is the confirm question in plain words, e.g. "Mark [medicine name] as stopped from today?" or "Add the dentist on Tue 28 Oct at 10:30?". Never propose a change she did not state, and never suggest changing a medicine yourself. Usually empty; at most two.
+
 Reading age 12 (strict): short sentences, mostly under 15 words, everyday words. Explain any medical word in brackets the first time, e.g. "endodontist (a root-canal specialist)".
 
 Return ONLY a JSON object, no markdown fences, with exactly these keys, "reply" first. Hard limits: reply at most 90 words; every list item at most 22 words; at most 3 items per list.
@@ -85,6 +89,7 @@ Return ONLY a JSON object, no markdown fences, with exactly these keys, "reply" 
   "replies": ["2 to 4 things this person is most likely to say next, in their own voice, 2 to 8 words each, genuinely different."],
   "learned": [{"topic": "${FACT_TOPICS.join('" | "')}", "fact": "Short dated fact.", "replaces": "exact old fact text, or empty"}],
   "results": [{"date": "YYYY-MM-DD or empty", "test": "Test name", "result": "Value with unit", "range": "", "lab": "", "notes": ""}],
+  "updates": [{"kind": "medication" | "appointment" | "priority", "say": "Confirm question in her words", "payload": {"name": "medicine name", "status": "current|stopped", "dose": "", "timing": "", "id": "appointment or priority id if it exists", "date": "YYYY-MM-DD", "time": "", "with": "", "for": ""}}],
   "limits": "One short sentence on what cannot be known without examining her. Empty for small talk."
 }
 "results" stays empty unless a photo is attached.
@@ -116,6 +121,7 @@ export function clean(a) {
     replies: arr(a.replies, 4).filter(r => typeof r === 'string').map(r => r.slice(0, 60)),
     learned: arr(a.learned, 3).filter(f => f && typeof f.fact === 'string' && f.fact.trim()).map(f => ({ topic: FACT_TOPICS.includes(f.topic) ? f.topic : 'other', fact: str(f.fact, 300), replaces: str(f.replaces, 300) })),
     results: Array.isArray(a.results) ? a.results : [],
+    updates: Array.isArray(a.updates) ? a.updates.slice(0, 4) : [],
     limits: str(a.limits, 400),
   };
 }
@@ -159,7 +165,7 @@ export function fallbackAnswer(message, level, reasons, self = true) {
     doNow: C[level].lines, watchFor: [], askTheDoctor: [],
     evidence: hits.flatMap(h => refsFor(h.text).slice(0, 2)).map(r => ({ point: r.title, ref: r.id, title: r.title, url: r.url })),
     usedFromRecord: [], replies: level === 'emergency' ? ['I have called for help', 'I am on my own'] : ['Try again', 'What should I ask my doctor?'],
-    learned: [], results: [], limits: 'Rule-based reply only; not personalised to her record.',
+    learned: [], results: [], updates: [], limits: 'Rule-based reply only; not personalised to her record.',
   };
 }
 
@@ -254,6 +260,7 @@ export default async function handler(req, res) {
     // The model may raise urgency but never lower it below the red-flag rules.
     answer.urgency = maxLevel(answer.urgency, rules.level);
     answer.results = image ? cleanResults(answer.results, canon || {}, localDay(new Date())) : [];
+    answer.updates = cleanUpdates(answer.updates, canon || {});
     // Only facts the bank does not hold yet.
     const known = new Set(facts(canon || {}).map(f => f.text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()));
     const learned = answer.learned.filter(f => !known.has(f.fact.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()));

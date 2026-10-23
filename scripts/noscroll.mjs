@@ -116,19 +116,35 @@ async function phoneRun(p, vp) {
   if (await visibleClick(p, '.prio.lead')) { await check(p, vp, 'priority sheet'); await closeLayer(p); }
   if (await visibleClick(p, '.view:not([hidden]) [data-check]')) { await flowWalk(p, vp, 'check-in'); }
   if (await visibleClick(p, '.view:not([hidden]) [data-log]')) { await flowWalk(p, vp, 'log symptom'); }
+  if (await visibleClick(p, '.view:not([hidden]) [data-facts]')) { await flowWalk(p, vp, 'still right?'); }
   await nav('record'); await check(p, vp, 'record');
-  for (const s of ['priorities', 'medicines', 'results', 'questions', 'gaps', 'doctors', 'history']) {
+  for (const s of ['priorities', 'medicines', 'results', 'questions', 'gaps', 'appointments', 'doctors', 'history']) {
     await nav('record');
     if (await visibleClick(p, '.back[data-home]')) await wait(p, 150);
     if (!(await visibleClick(p, `.rec-tiles [data-go="${s}"]`))) continue;
     await pages(p, vp, `record ${s}`);
   }
+  await nav('record');
+  if (await visibleClick(p, '.back[data-home]')) await wait(p, 150);
+  if (await visibleClick(p, '.rec-tiles [data-go="appointments"]') && await visibleClick(p, '[data-add-appt]')) { await check(p, vp, 'add an appointment'); await closeLayer(p); }
   await nav('conditions');
   if (await visibleClick(p, '.view:not([hidden]) .back[data-home]')) await wait(p, 150);
   await pages(p, vp, 'conditions list');
   await conditionsWalk(p, vp, false);
   await nav('ask'); await check(p, vp, 'ask');
   await layers(p, vp);
+}
+// The confirm card Ellie shows when she hears a fact has changed.
+async function chatUpdate(p, vp) {
+  await visibleClick(p, '[data-go="ask"]'); await wait(p, 500);
+  if (!(await p.locator('#msg').count())) return;
+  // A medicine that is on this record's list, so the proposal is a real one.
+  const med = await p.evaluate(() => { try { return JSON.parse(localStorage.getItem('dipti.canon')).medications.find(m => m.status !== 'stopped').name; } catch { return ''; } });
+  if (!med) return;
+  await p.fill('#msg', `I stopped ${med} today.`);
+  await visibleClick(p, '#sendBtn');
+  await p.waitForSelector('[data-upd-yes]', { timeout: 15000 }).catch(() => failures.push(`${vp.join('x')} no confirm card after a change was reported`));
+  await check(p, vp, 'ask: confirm an update');
 }
 
 async function flowWalk(p, vp, label) {
@@ -189,8 +205,9 @@ async function wideRun(p, vp) {
     if (await visibleClick(p, s)) { await pages(p, vp, label, '.panel, .sheet'); await closeLayer(p); }
   }
   if (await visibleClick(p, '.dash [data-check]')) await flowWalk(p, vp, 'check-in');
+  if (await visibleClick(p, '.dash [data-fact]')) await flowWalk(p, vp, 'still right?');
   await tab('record'); await check(p, vp, 'record');
-  for (const s of ['priorities', 'medicines', 'results', 'questions', 'gaps', 'doctors', 'history']) {
+  for (const s of ['priorities', 'medicines', 'results', 'questions', 'gaps', 'appointments', 'doctors', 'history']) {
     await tab('record');
     if (await visibleClick(p, '.back[data-home]')) await wait(p, 150);
     if (await visibleClick(p, `.rec-tiles [data-go="${s}"]`)) await pages(p, vp, `record ${s}`);
@@ -216,6 +233,7 @@ for (const vp of VIEWPORTS) {
       continue;
     }
     if (vp[0] >= 1024) await wideRun(p, vp); else await phoneRun(p, vp);
+    await chatUpdate(p, vp);
     await p.context().close();
     } catch (e) {
       // A step that could not run is a failure too, never a silent pass.

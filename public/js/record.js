@@ -3,6 +3,7 @@
 import { priorities, medicines, questionsByDoctor, openGaps, historyEvents } from './record-model.js';
 import { resultCards, fmtDate, cardLabel } from './metrics.js';
 import { pager, autoPages } from './pager.js';
+import { appointments, whenText, nextAppointment } from './facts-model.js';
 
 let ctx, root, view = 'home';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -103,6 +104,23 @@ const SPOKES = {
       ctx.toast(r.ok ? 'Marked as cleared up' : 'Saved on this device, will sync'); render();
     }));
   },
+  appointments: canon => {
+    const a = appointments(canon);
+    const card = (x, past) => `<section class="lcard appt ${past ? 'past' : ''}"><div class="lc-top"><b>${esc(x.with)}</b><i class="chip ${x.status === 'cancelled' ? '' : past ? 'ok' : 'accent'}">${esc(past ? { done: 'Done', cancelled: 'Cancelled', moved: 'Moved' }[x.status] || x.status : whenText(x.date, x.time))}</i></div>
+      <p>${esc([past ? whenText(x.date, x.time) : '', x.where, x.for].filter(Boolean).join(' · ') || ' ')}</p>${x.notes && x.notes !== 'From the record' ? `<p class="soft">${esc(x.notes)}</p>` : ''}
+      ${past ? '' : `<button class="pill" data-appt="${esc(x.id)}">Moved or done?</button>`}</section>`;
+    spoke('Appointments', 'Appointments', [
+      `<button class="btn primary" data-add-appt>Add an appointment</button>`,
+      ...(a.overdue.length || a.upcoming.length ? [{ html: '<p class="kicker">Coming up</p>', keep: true }, ...a.overdue.map(x => card(x, false)), ...a.upcoming.map(x => card(x, false))] : ['<p class="soft">Nothing booked. Add one and it shows on Today, and gets checked the day after.</p>']),
+      ...(a.earlier.length ? [{ html: '<p class="kicker">Earlier</p>', keep: true }, ...a.earlier.map(x => card(x, true))] : []),
+    ], body => {
+      body.querySelector('[data-add-appt]')?.addEventListener('click', () => addAppointment(canon));
+      body.querySelectorAll('[data-appt]').forEach(b => b.onclick = () => {
+        const f = [...a.upcoming, ...a.overdue].find(x => x.id === b.dataset.appt);
+        if (f) ctx.factFlow([{ id: 'Appointments:' + f.id, tab: 'Appointments', key: f.id, kind: 'apptSoon', row: f, question: `${f.with}, ${whenText(f.date, f.time)}: still on?`, says: f.for || '', answers: [['still', 'Yes, still on'], ['moved', 'It moved'], ['done', 'Done, I went'], ['cancelled', 'It was cancelled']] }]);
+      });
+    });
+  },
   doctors: canon => spoke('Doctors', 'Clinicians', (canon.clinicians || []).map(c => `<section class="lcard"><div class="lc-top"><b>${esc(c.name)}</b><small>${esc(c.role)}</small></div>${c.owns ? `<p class="soft">${esc(c.owns)}</p>` : ''}${c.contact ? `<p>${esc(c.contact)}</p>` : ''}<button class="pill" data-brief="${esc(c.name)}">Summary for ${esc(c.name)}</button></section>`)),
   history: canon => {
     const ev = historyEvents(canon).slice(0, 200);
@@ -115,6 +133,26 @@ const SPOKES = {
     spoke('History', 'Notes', items);
   },
 };
+
+function addAppointment(canon) {
+  const docs = (canon.clinicians || []).map(c => c.name);
+  openSheet(`<p class="kicker">New appointment</p><h3 class="sheet-title">Who is it with?</h3>
+    <input id="apWith" list="apDocs" maxlength="80" placeholder="e.g. Dentist, or a doctor's name"><datalist id="apDocs">${docs.map(d => `<option value="${esc(d)}">`).join('')}</datalist>
+    <div class="row"><input id="apDate" type="date" aria-label="Date"><input id="apTime" maxlength="10" placeholder="Time" aria-label="Time"></div>
+    <input id="apFor" maxlength="120" placeholder="What for (optional)">
+    <div class="row"><button class="btn ghost" data-close>Cancel</button><button class="btn primary grow" data-save>Save</button></div>`, (sheet, close) => {
+    sheet.querySelector('[data-save]').onclick = async () => {
+      const v = id => sheet.querySelector(id).value.trim();
+      const p = { with: v('#apWith'), date: v('#apDate'), time: v('#apTime'), for: v('#apFor') };
+      if (!p.with || !/^\d{4}-\d{2}-\d{2}$/.test(p.date)) { ctx.toast('Add who it is with, and the date'); return; }
+      close();
+      const r = await ctx.save('appointment', p);
+      (canon.appointments ||= []).push({ ...p, id: r.out?.id || 'new', status: 'booked', checked: new Date().toISOString().slice(0, 10) });
+      ctx.toast(r.ok ? 'Saved to your Sheet' : 'Saved on this device, will sync');
+      render(); if (r.ok) ctx.reload();
+    };
+  });
+}
 
 function answerSheet(canon, id) {
   const q = (canon.questions || []).find(x => x.id === id);
@@ -155,7 +193,7 @@ function render() {
       ${tile('questions', 'Questions', qn, 'for her doctors')}
       ${tile('gaps', 'To clear up', gaps, gaps ? 'open' : 'nothing open')}
       ${tile('doctors', 'Doctors', (canon.clinicians || []).length, 'who looks after what')}
-      ${tile('conditions', 'Conditions', (canon.conditions || []).length, 'in your record')}
+      ${(() => { const n = nextAppointment(canon); return tile('appointments', 'Appointments', appointments(canon).upcoming.length, n ? `next ${n.with}` : 'none booked'); })()}
       ${tile('history', 'History', lastEv ? lastEv.date.replace(/ \d{4}$/, '') : 'None', 'latest entry')}
     </div>
     <div class="row rec-actions">${sheetUrl() ? `<a class="btn sheet-btn grow" href="${esc(sheetUrl())}" target="_blank" rel="noopener">Open my Sheet</a>` : ''}<button class="btn grow" data-brief="">Summary for a doctor</button></div>

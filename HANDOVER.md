@@ -1,5 +1,14 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-10-23 (evening): fact checker
+
+- [x] `public/js/facts-model.js` (what is due, in what order, and the writes for each answer). Tests: `test/facts-model.test.js`.
+- [x] Code.gs: Appointments tab, `CheckedAt` columns, `appointment` and `check` actions. Tests: `test/sheet.test.js`.
+- [x] Today and overview cards, the check flow (`factFlow` in `public/js/today.js`), and the Appointments list and Add form in Record.
+- [x] Ellie's proposals: `updates[]` in the chat answer, filtered by `lib/updates.js` (tests: `test/updates.test.js`), shown as confirm cards in `public/js/chat.js`. The simulation covers chat, then confirm, then the Sheet, then not asked again.
+- [ ] Real-model behaviour for `updates` is unverified: the scripted model was used. Watch the first week's Changelog.
+- [ ] xrds.au DNS (see `NOW.md`).
+
 ## 2026-10-23 (later): Conditions tab and no-scroll
 
 ### Done and verified (locally)

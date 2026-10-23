@@ -164,12 +164,32 @@ function leffyBody(m) {
       ${hot && c ? `<div class="bsec who"><p class="bk">${esc(c.title)}</p>${c.lines.map(l => `<p>${linkify(l)}</p>`).join('')}</div>` : ''}
     </div>
     ${a.results?.length ? resultsCard(m) : ''}
+    ${a.updates?.length ? updatesCard(m) : ''}
     ${m.answer ? `<div class="bmeta">
       ${a.watchFor?.length ? '<button data-more="watch">Watch for</button>' : ''}
       ${a.askTheDoctor?.length ? '<button data-more="doctor">Ask the doctor</button>' : ''}
       ${a.evidence?.length || a.limits ? '<button data-more="src">Sources</button>' : ''}
       <button data-say aria-label="Read aloud">${ICON.speaker}</button>
     </div><div class="bmore" hidden></div>` : ''}`;
+}
+
+// Ellie's proposed updates: nothing reaches the Sheet until a tap on Yes.
+function updatesCard(m) {
+  const done = m.updatesDone || {};
+  return `<div class="rcard upd"><p class="bk">Update ${isDipti() ? 'your' : "Dipti's"} Sheet?</p>
+    ${m.answer.updates.map((u, i) => done[i] ? `<p class="upd-done">${done[i] === 'yes' ? '✓ ' + esc(u.say.replace(/\?$/, '')) + ': saved' : 'Left as it was'}</p>`
+      : `<div class="upd-row"><p>${esc(u.say)}</p><div class="row"><button class="pill" data-upd-no="${i}">No</button><button class="btn primary" data-upd-yes="${i}">Yes, update</button></div></div>`).join('')}
+  </div>`;
+}
+
+async function answerUpdate(m, i, yes) {
+  const u = m.answer.updates[i];
+  (m.updatesDone ||= {})[i] = yes ? 'yes' : 'no';
+  persist(); updateMsg(m);
+  if (!yes) return;
+  const r = await ctx.save(u.action, { ...u.payload, checked: true });
+  ctx.toast(r.ok ? 'Saved to the Sheet' : 'Saved on this phone, will sync');
+  ctx.reload?.();
 }
 
 function resultsCard(m) {
@@ -243,6 +263,8 @@ function wireMsg(n) {
   if (!m) return;
   n.querySelector('[data-retry]')?.addEventListener('click', () => retry(m));
   n.querySelector('[data-say]')?.addEventListener('click', () => say(m.answer.reply));
+  n.querySelectorAll('[data-upd-yes]').forEach(b => b.onclick = () => answerUpdate(m, +b.dataset.updYes, true));
+  n.querySelectorAll('[data-upd-no]').forEach(b => b.onclick = () => answerUpdate(m, +b.dataset.updNo, false));
   n.querySelectorAll('[data-more]').forEach(b => b.onclick = () => {
     const box = n.querySelector('.bmore'), kind = b.dataset.more, open = b.getAttribute('aria-expanded') === 'true';
     n.querySelectorAll('[data-more]').forEach(x => x.setAttribute('aria-expanded', 'false'));

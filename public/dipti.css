@@ -365,8 +365,11 @@ a.btn { display: grid; place-items: center; text-decoration: none; color: var(--
   .flow { padding: calc(6px + var(--safe-t)) 18px calc(8px + var(--safe-b)); }
   .flow-inner { max-width: 720px; display: grid; grid-template-columns: 1fr 1fr; align-content: start; column-gap: 18px; row-gap: 8px; }
   .flow-inner > .flow-top { grid-column: 1 / -1; }
-  .flow-inner > :not(.flow-top):not(h1):not(.kicker):not(p.soft) { grid-column: 2; grid-row: 2 / span 4; }
-  .flow-inner > .btn.primary, .flow-inner > .row { grid-row: auto; align-self: end; }
+  /* Left: what is being asked. Right: the answer, with its buttons under it. */
+  .flow-inner > .kicker, .flow-inner > h1, .flow-inner > p.soft, .flow-inner > label { grid-column: 1; }
+  .flow-inner > .opts, .flow-inner > .tiles2, .flow-inner > .score, .flow-inner > textarea, .flow-inner > .kc.level { grid-column: 2; grid-row: 2 / span 4; }
+  .flow-inner > .finput { grid-column: 1; }
+  .flow-inner > .btn, .flow-inner > .row { grid-column: 2; grid-row: 6; align-self: end; }
   .flow h1 { font-size: 21px; }
   .tiles2 { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
   .tile2 { min-height: 44px; font-size: 14px; padding: 6px 10px; }
@@ -465,4 +468,41 @@ a.btn { display: grid; place-items: center; text-decoration: none; color: var(--
   .login-card.who .who-opt { min-height: 50px; padding-top: 4px; padding-bottom: 4px; }
   .login-card.who .who-opt small { display: none; }
   .login-card.who .who-list { gap: 6px; }
+}
+
+/* ---------- fact checker ---------- */
+.kc.facts { display: flex; align-items: center; justify-content: space-between; gap: .6em; }
+.kc.facts small { display: block; font-size: .72em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.kc.facts b { font: 600 .98em/1.25 var(--serif); }
+.kc.facts svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; flex: none; }
+.finput { min-height: 52px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); padding: 0 14px; font-size: 18px; width: 100%; }
+.hello p b { color: var(--accent); font-weight: 700; }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .today-home > .kc.checkin { grid-row: 1; }
+  .today-home > .kc.facts { grid-column: 2; grid-row: 2; align-self: start; }
+}
+.sheet .row input { flex: 1; min-width: 0; }
+.lcard.appt.past { opacity: .8; }
+.dcard.flex.prio-card { flex-grow: 1.6; }
+.rcard.upd { display: grid; gap: 8px; }
+.upd-row { display: grid; gap: 6px; }
+.upd-row p { font-weight: 600; line-height: 1.35; }
+.upd-row .row { justify-content: flex-end; gap: 8px; }
+.upd-row .btn { min-height: 40px; font-size: 15px; padding: 0 16px; }
+.upd-done { color: var(--routine); font-weight: 600; font-size: 14px; }
+
+/* Small phones: a tighter Today so the quick check fits. */
+@media (max-height: 620px) and (orientation: portrait) {
+  .quick .qk { min-height: 3.3em; gap: .15em; }
+  .quick .qk svg { width: 20px; height: 20px; }
+  .kc.facts b { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .kc.facts, .kc.checkin { padding-top: .6em; padding-bottom: .6em; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  /* The edit step (new dose, new date) reads top to bottom. */
+  .flow-inner:has(> .finput) { grid-template-columns: 1fr; max-width: 460px; row-gap: 4px; }
+  .flow-inner:has(> .finput) > * { grid-column: 1; grid-row: auto; }
+  .flow-inner:has(> .finput) .finput { min-height: 42px; }
+  .flow-inner:has(> .finput) > .btn { min-height: 44px; margin-top: 6px; }
 }

@@ -91,7 +91,7 @@ export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null
 // Load a canon-shaped object into the tabs (used for invented seed data).
 // canon key -> tab; each row is written in the tab's own column order.
 export const CANON_TABS = {
-  priorities: 'Priorities', conditions: 'Conditions', medications: 'Medications', testResults: 'TestResults',
+  priorities: 'Priorities', appointments: 'Appointments', conditions: 'Conditions', medications: 'Medications', testResults: 'TestResults',
   checkins: 'CheckIns', questions: 'Questions', gaps: 'KnowledgeGaps', clinicians: 'Clinicians',
   evidence: 'Evidence', sources: 'Sources', notes: 'Notes',
 };

@@ -23,9 +23,10 @@ var TZ = 'Asia/Kolkata';
 var TABS = {
   Meta:          { mode: 'overwrite', cols: [['Key', 'key'], ['Value', 'value']] },
   Profile:       { mode: 'overwrite', cols: [['Key', 'key'], ['Value', 'value'], ['Source', 'source'], ['UpdatedAt', 'updated'], ['Verified', 'verified']] },
-  Priorities:    { mode: 'overwrite', cols: [['ID', 'id'], ['Rank', 'rank'], ['Title', 'title'], ['Status', 'status'], ['WhyItMatters', 'why'], ['Plan', 'plan'], ['NextStep', 'nextStep'], ['AskWhom', 'askWhom'], ['UpdatedAt', 'updated']] },
+  Priorities:    { mode: 'overwrite', cols: [['ID', 'id'], ['Rank', 'rank'], ['Title', 'title'], ['Status', 'status'], ['WhyItMatters', 'why'], ['Plan', 'plan'], ['NextStep', 'nextStep'], ['AskWhom', 'askWhom'], ['UpdatedAt', 'updated'], ['CheckedAt', 'checked']] },
+  Appointments:  { mode: 'overwrite', cols: [['ID', 'id'], ['Date', 'date'], ['Time', 'time'], ['With', 'with'], ['Where', 'where'], ['For', 'for'], ['Status', 'status'], ['Notes', 'notes'], ['UpdatedAt', 'updated'], ['CheckedAt', 'checked']] },
   Conditions:    { mode: 'overwrite', cols: [['Condition', 'name'], ['Status', 'status'], ['Since', 'since'], ['Evidence', 'evidence'], ['Notes', 'notes'], ['Source', 'source'], ['UpdatedAt', 'updated'], ['Key', 'key'], ['AlsoCalled', 'aliases'], ['Plain', 'plain']] },
-  Medications:   { mode: 'overwrite', cols: [['Name', 'name'], ['Generic', 'generic'], ['Dose', 'dose'], ['Timing', 'timing'], ['Prescribed8Oct', 'rx'], ['Purpose', 'purpose'], ['Status', 'status'], ['Source', 'source'], ['UpdatedAt', 'updated']] },
+  Medications:   { mode: 'overwrite', cols: [['Name', 'name'], ['Generic', 'generic'], ['Dose', 'dose'], ['Timing', 'timing'], ['Prescribed8Oct', 'rx'], ['Purpose', 'purpose'], ['Status', 'status'], ['Source', 'source'], ['UpdatedAt', 'updated'], ['CheckedAt', 'checked']] },
   TestResults:   { mode: 'append', cols: [['Date', 'date'], ['Test', 'test'], ['Result', 'result'], ['Range', 'range'], ['Lab', 'lab'], ['Notes', 'notes'], ['Source', 'source']] },
   CheckIns:      { mode: 'append', cols: [['TimestampUTC', 'tsUTC'], ['TimestampLocal', 'tsLocal'], ['By', 'by'], ['Tooth', 'tooth'], ['Abdomen', 'abdomen'], ['Fatigue', 'fatigue'], ['Sleep', 'sleep'], ['Bowels', 'bowels'], ['Mood', 'mood'], ['Verdict', 'verdict'], ['Notes', 'notes']] },
   Questions:     { mode: 'overwrite', cols: [['ID', 'id'], ['Question', 'question'], ['AskWhom', 'askWhom'], ['Priority', 'priority'], ['Status', 'status'], ['Answer', 'answer'], ['UpdatedAt', 'updated']] },
@@ -36,6 +37,10 @@ var TABS = {
   Notes:         { mode: 'append', cols: [['TimestampUTC', 'tsUTC'], ['By', 'by'], ['Text', 'text'], ['Tag', 'tag']] },
   Changelog:     { mode: 'append', cols: [['TimestampUTC', 'ts'], ['Tab', 'tab'], ['Key', 'key'], ['OldValue', 'old'], ['NewValue', 'new'], ['By', 'by'], ['Source', 'source']] }
 };
+
+var APPT_STATUS = ['booked', 'done', 'moved', 'cancelled'];
+// Tabs whose rows the fact checker asks about, and the column that names a row.
+var CHECKABLE = { Medications: 'name', Priorities: 'id', Appointments: 'id' };
 
 var CHECKIN_ENUMS = {
   sleep: ['good', 'ok', 'poor'],
@@ -68,14 +73,17 @@ function sh(name) {
 }
 
 function getRows(name) {
-  var s = sh(name);
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!s) return []; // a tab added in a newer Code.gs, before setup() has run
   if (s.getLastRow() < 2) return [];
   return s.getRange(2, 1, s.getLastRow() - 1, s.getLastColumn()).getValues();
 }
 
 // Header text -> 0-based column index, read from row 1 of the live tab.
 function headerMap(name) {
-  var s = sh(name), w = s.getLastColumn(), m = {};
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name), m = {};
+  if (!s) return m;
+  var w = s.getLastColumn();
   if (!w) return m;
   s.getRange(1, 1, 1, w).getValues()[0].forEach(function (h, i) {
     var k = String(h).trim();
@@ -159,6 +167,8 @@ function updateFields(tab, row, p, keys, label, by) {
     logChange(tab, label + '.' + k, oldV, p[k], by, 'app');
   });
   if (TABS[tab].cols.some(function (c) { return c[1] === 'updated'; })) s.getRange(row, col(tab, 'updated')).setValue(nowUTC().slice(0, 10));
+  // A change made from a fact check also counts as checked today.
+  if (p.checked && CHECKABLE[tab]) s.getRange(row, col(tab, 'checked')).setValue(nowUTC().slice(0, 10));
 }
 
 /* ---------- read: whole canon ---------- */
@@ -176,6 +186,7 @@ function readCanon() {
     meta: kv('Meta'),
     profile: kv('Profile'),
     priorities: arr('Priorities'),
+    appointments: arr('Appointments'),
     conditions: arr('Conditions'),
     medications: arr('Medications'),
     testResults: arr('TestResults'),
@@ -321,6 +332,39 @@ var ACTIONS = {
       updateFields('Clinicians', r, p, ['role', 'owns', 'contact', 'lastSeen', 'notes'], p.name, by);
     }
     return json({ ok: true });
+  },
+
+  // Appointments: update one by id, or add a new one.
+  appointment: function (p, by) {
+    if (p.status && !inEnum(p.status, APPT_STATUS)) return err('invalid status');
+    if (p.date && !/^\d{4}-\d{2}-\d{2}$/.test(p.date)) return err('date must be YYYY-MM-DD');
+    if (p.id) {
+      var r = findRow('Appointments', 'id', p.id);
+      if (r < 0) return err('unknown appointment id: ' + p.id);
+      updateFields('Appointments', r, p, ['date', 'time', 'with', 'where', 'for', 'status', 'notes'], p.id, by);
+      return json({ ok: true, id: p.id });
+    }
+    var bad = need(p, ['date', 'with']);
+    if (bad) return err(bad);
+    var id = nextId('Appointments', 'A'), today = nowUTC().slice(0, 10);
+    appendObj('Appointments', { id: id, date: p.date, time: p.time || '', with: p.with, where: p.where || '', for: p.for || '', status: p.status || 'booked', notes: p.notes || '', updated: today, checked: today });
+    logChange('Appointments', id, '(none)', p.with + ' ' + p.date, by, 'app');
+    return json({ ok: true, id: id });
+  },
+
+  // The fact checker: "still right" for one row. Changes go through the
+  // tab's own action (with checked: true); this only records the check.
+  check: function (p, by) {
+    var keyCol = CHECKABLE[p.tab];
+    if (!keyCol) return err('cannot check tab: ' + p.tab);
+    var bad = need(p, ['key']);
+    if (bad) return err(bad);
+    var r = findRow(p.tab, keyCol, p.key);
+    if (r < 0) return err('unknown ' + p.tab + ' row: ' + p.key);
+    var today = nowUTC().slice(0, 10);
+    sh(p.tab).getRange(r, col(p.tab, 'checked')).setValue(today);
+    logChange(p.tab, rowObjects(p.tab)[r - 2][keyCol] + '.checked', '', 'still right', by, 'fact check');
+    return json({ ok: true, checked: today });
   },
 
   profile: function (p, by) {

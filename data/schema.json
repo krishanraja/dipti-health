@@ -29,7 +29,23 @@
         "Plan",
         "NextStep",
         "AskWhom",
-        "UpdatedAt"
+        "UpdatedAt",
+        "CheckedAt"
+      ]
+    },
+    "Appointments": {
+      "mode": "overwrite",
+      "headers": [
+        "ID",
+        "Date",
+        "Time",
+        "With",
+        "Where",
+        "For",
+        "Status",
+        "Notes",
+        "UpdatedAt",
+        "CheckedAt"
       ]
     },
     "Conditions": {
@@ -58,7 +74,8 @@
         "Purpose",
         "Status",
         "Source",
-        "UpdatedAt"
+        "UpdatedAt",
+        "CheckedAt"
       ]
     },
     "TestResults": {

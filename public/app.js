@@ -1,4 +1,4 @@
-import { mountToday, refreshToday } from '/js/today.js';
+import { mountToday, refreshToday, factFlow } from '/js/today.js';
 import { mountRecord, refreshRecord, recordHome, recordSpoke, openSheet } from '/js/record.js';
 import { resultsText } from '/js/speech.js';
 import { canRecord, startRecording, transcribeBlob } from '/js/recorder.js';
@@ -250,7 +250,7 @@ function listen(onText, onState) {
 
 /* ---------------- views ---------------- */
 function openAsk(text) { go('ask'); sendToChat(text); }
-const ctx = () => ({ canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
+const ctx = () => ({ canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, factFlow, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
 function buildToday() { mountToday($('#today'), ctx()); }
 function buildRecord() { mountRecord($('#rec'), ctx()); }
 function buildConditions() { mountConditions($('#conds'), ctx()); }

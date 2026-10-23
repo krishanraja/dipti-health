@@ -7,6 +7,7 @@
 //    same payloads the screens send.
 // 3. Reads the raw sheet tabs back and checks every new row, cell by cell.
 // 4. Checks the knowledge bank, the doctor's context and the summaries.
+import { factsDue } from '../public/js/facts-model.js';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -115,6 +116,16 @@ const t2 = await dip.call('/api/ask', { message: 'My tooth still hurts when I bi
 const t3 = await kri.call('/api/ask', { message: 'What is the plan for her tummy pain?', thread: [], by: 'Krish', threadId: 'simthread3', rid: 'simrid3' });
 const t4 = await dip.call('/api/ask', { message: 'I have been vomiting since this morning', thread: [], threadId: 'simthread4', rid: 'simrid4' });
 
+// Fact checker: Dipti tells Ellie a medicine stopped, confirms the card, checks
+// another medicine is still right, and adds then completes an appointment.
+const t5 = await dip.call('/api/ask', { message: 'I stopped Medicine A yesterday.', thread: [], threadId: 'simthread5', rid: 'simrid5' });
+const proposed = t5.find(e => e.type === 'answer').answer.updates;
+const factOuts = [];
+for (const u of proposed) factOuts.push(await dip.write(u.action, { ...u.payload, checked: true }, 'Dipti'));
+factOuts.push(await dip.write('check', { tab: 'Medications', key: 'Supplement D' }, 'Dipti'));
+const apptAdd = await dip.write('appointment', { date: '2026-11-02', time: '10:30', with: 'Dr Example (dentist)', for: 'Tooth' }, 'Dipti');
+factOuts.push(apptAdd, await dip.write('appointment', { id: apptAdd.id, status: 'done', checked: true }, 'Dipti'));
+
 /* ---------- 3. read the sheet back ---------- */
 const tabs = await (await fetch(SHEET + '/__tabs')).json();
 const canon = await dip.call('/api/canon');
@@ -173,9 +184,9 @@ check('Questions, gaps, medicines and doctors: changed by Krish and audited', ()
 });
 check('Chat: each message logged once with its reply; devices get the slim copy', () => {
   const concerns = newRows('Notes').filter(r => r[3] === 'concern');
-  assert.equal(concerns.length, 4);
+  assert.equal(concerns.length, 5);
   assert.ok(concerns.every(r => /\nRID: simrid\d\nDATA: \{/.test(r[2])));
-  assert.deepEqual(concerns.map(r => r[1]), ['Dipti', 'Dipti', 'Krish', 'Dipti']);
+  assert.deepEqual(concerns.map(r => r[1]), ['Dipti', 'Dipti', 'Krish', 'Dipti', 'Dipti']);
   assert.ok(canon.notes.filter(n => n.tag === 'concern').every(n => !/DATA:/.test(n.text)));
 });
 check('Chat: the repeat question is spotted and answered back-to-the-plan', () => {
@@ -198,6 +209,19 @@ check('Chat: reply streamed, and suggested next replies', () => {
 });
 const rec = await dip.call('/api/answer?rid=simrid2');
 check('Recovered reply matches the streamed one', () => assert.equal(rec.answer.reply, t2.find(e => e.type === 'answer').answer.reply));
+
+check('Fact checker: Ellie proposes the change, and only the confirmed write reaches the Sheet', () => {
+  assert.equal(proposed.length, 1);
+  assert.deepEqual(proposed[0].payload, { name: 'Medicine A', status: 'stopped' });
+  for (const o of factOuts) assert.equal(o.ok, true, JSON.stringify(o));
+  assert.equal(canon.medications.find(m => m.name === 'Medicine A').status, 'stopped');
+  assert.ok(canon.medications.find(m => m.name === 'Supplement D').checked);
+  assert.equal(canon.appointments.find(a => a.id === apptAdd.id).status, 'done');
+  const ch = newRows('Changelog').map(r => [r[2], r[5]].join('|'));
+  for (const k of ['Medicine A.status|Dipti', 'Supplement D.checked|Dipti', `${apptAdd.id}.status|Dipti`]) assert.ok(ch.includes(k), 'missing ' + k);
+  const due = factsDue(canon).map(f => f.key);
+  assert.ok(!due.includes('Medicine A') && !due.includes('Supplement D'));
+});
 
 /* ---------- 4. the knowledge bank, context and summaries ---------- */
 const b = bank(canon), hist = historyEvents(canon), ctx = patientContext(canon);
