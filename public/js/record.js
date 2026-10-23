@@ -15,18 +15,48 @@ export function refreshRecord() { if (root) render(); }
 export function recordHome() { view = 'home'; if (root) render(); }
 export function recordSpoke(v) { view = v; if (root) render(); }
 
+// A sheet from the bottom (centred on wide screens). Always a way out: the
+// close button, a tap outside, Escape, or a swipe down on a phone.
 export function openSheet(html, mount) {
   const wrap = document.createElement('div');
   wrap.className = 'sheet-wrap';
-  wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><button class="sheet-x" type="button" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>${html}</div>`;
   document.body.appendChild(wrap);
   autoPages(wrap); // any [data-pages] block pages instead of scrolling
+  const sheet = wrap.querySelector('.sheet');
   const onKey = e => { if (e.key === 'Escape') close(); };
-  const close = () => { wrap.remove(); removeEventListener('keydown', onKey); };
+  let closed = false;
+  const close = () => {
+    if (closed) return; closed = true;
+    removeEventListener('keydown', onKey);
+    sheet.style.transform = 'translateY(110%)'; wrap.style.transition = 'opacity .2s'; wrap.style.opacity = '0';
+    setTimeout(() => wrap.remove(), 220);
+  };
   addEventListener('keydown', onKey);
   wrap.onclick = e => { if (e.target === wrap) close(); };
   wrap.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
-  mount?.(wrap.querySelector('.sheet'), close);
+  // Swipe down to close: follows the finger, closes past a short distance or a quick flick.
+  let y0 = null, x0 = 0, t0 = 0, dy = 0;
+  sheet.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || e.target.closest('input, textarea, select, .pg-body')) return;
+    y0 = e.clientY; x0 = e.clientX; t0 = Date.now(); dy = 0;
+  });
+  sheet.addEventListener('pointermove', e => {
+    if (y0 === null) return;
+    const d = e.clientY - y0;
+    if (Math.abs(e.clientX - x0) > Math.abs(d) && !dy) { y0 = null; return; }
+    dy = Math.max(0, d);
+    if (dy > 4) { sheet.classList.add('dragging'); sheet.style.transform = `translateY(${dy}px)`; }
+  });
+  const end = () => {
+    if (y0 === null) return;
+    const fast = dy > 40 && Date.now() - t0 < 250;
+    y0 = null; sheet.classList.remove('dragging');
+    if (dy > 90 || fast) close(); else sheet.style.transform = '';
+  };
+  sheet.addEventListener('pointerup', end);
+  sheet.addEventListener('pointercancel', end);
+  mount?.(sheet, close);
   return close;
 }
 

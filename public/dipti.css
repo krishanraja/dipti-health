@@ -274,7 +274,8 @@ a.btn { display: grid; place-items: center; text-decoration: none; color: var(--
 .zsec p.soft { font-size: 14.5px; line-height: 1.4; }
 .cv > .btn.primary, .ccol > .btn.primary { flex: none; min-height: 50px; }
 
-.map-sec { flex: 1; min-height: 0; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.map-sec { flex: 1; min-height: 0; grid-template-areas: "top" "chips" "map" "card"; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.map-sec > .map-top { grid-area: top; } .map-sec > .chips { grid-area: chips; } .map-sec > .map-box { grid-area: map; min-height: 120px; } .map-sec > .linkcard { grid-area: card; }
 .map-empty { gap: 10px; line-height: 1.45; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips { gap: 4px 6px; }
@@ -447,11 +448,10 @@ a.btn { display: grid; place-items: center; text-decoration: none; color: var(--
   .lc-actions .pill { min-height: 34px; }
 }
 @media (orientation: landscape) and (max-height: 500px) {
-  .map-sec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); column-gap: 10px; }
+  .map-sec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "chips chips" "map card"; grid-template-rows: auto minmax(0, 1fr); column-gap: 10px; }
   .map-sec > .map-top { display: none; }
-  .map-sec > .chips { grid-column: 1 / -1; }
-  .map-sec > .map-box { grid-column: 1; grid-row: 2; }
-  .map-sec > .linkcard { grid-column: 2; grid-row: 2; align-self: start; }
+  .map-sec > .map-box { min-height: 0; }
+  .map-sec > .linkcard { align-self: start; }
   .zoom.tab-map { grid-template-columns: minmax(0, .55fr) minmax(0, 1.45fr); }
   .login-card.who #whoPick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); column-gap: 18px; align-items: center; text-align: left; }
   .login-card.who #whoPick > h1, .login-card.who #whoPick > p { grid-column: 1; }

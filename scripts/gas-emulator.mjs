@@ -48,6 +48,7 @@ class Sheet {
   setFrozenRows() { return this; }
   getLastColumn() { return this.width; }
   getRange(r, c, nr, nc) { return new Range(this, r, c, nr, nc); }
+  getDataRange() { return new Range(this, 1, 1, this.rows.length, this.width); }
   appendRow(values) { this.rows.push(values.map(coerce)); this.width = Math.max(this.width, values.length); return this; }
 }
 

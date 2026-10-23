@@ -1,0 +1,176 @@
+/* Steady design system, v2. Loaded last: it sets the tokens and the shared
+   components every screen uses. Rules of the system:
+   - Three surface levels: page (--bg), card (--card), and on-card controls
+     (--fill). A control never takes the colour of what it sits on, so it can
+     never disappear, in light or dark mode.
+   - One button family: primary (accent, one per screen), tinted (accent on a
+     soft accent fill, the second choice), plain (neutral fill), quiet (text).
+   - Choices look like choices: a ring and a check when chosen, never a
+     barely-different grey.
+   - Layers (sheets, panels, flows) always show a way out: a close button,
+     a tap outside, Escape, and on a phone a swipe down. */
+
+:root {
+  --fill: rgba(118, 118, 128, .12);
+  --fill-2: rgba(118, 118, 128, .2);
+  --raised: #ffffff;
+  --scrim: rgba(0, 0, 0, .32);
+  --toast-bg: #1c1c1e;
+  --toast-ink: #ffffff;
+  --ring: 0 0 0 2px var(--accent);
+  --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fill: rgba(118, 118, 128, .24);
+    --fill-2: rgba(118, 118, 128, .36);
+    --raised: #2c2c2e;
+    --card: #1c1c1e;
+    --scrim: rgba(0, 0, 0, .6);
+    --toast-bg: #3a3a3c;
+    --toast-ink: #ffffff;
+    --line: rgba(84, 84, 88, .6);
+    --shadow: 0 0 0 .5px rgba(255, 255, 255, .06);
+  }
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  min-height: 50px; padding: 0 18px; border-radius: var(--r-md); border: 0;
+  background: var(--fill); color: var(--ink); box-shadow: none;
+  font: 600 16px/1.2 var(--sans); letter-spacing: -.005em;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-align: center;
+  transition: transform .15s var(--ease), background .2s, opacity .2s;
+}
+.btn:active { transform: scale(.97); background: var(--fill-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.btn.primary:active { background: color-mix(in srgb, var(--accent) 86%, #000); }
+.btn.tinted { background: var(--accent-soft); color: var(--accent); }
+.btn.ghost, .btn.quiet { background: transparent; color: var(--accent); }
+.btn.ghost:active, .btn.quiet:active { background: var(--fill); }
+.btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.row { display: flex; gap: 10px; }
+.row > .btn { flex: 1 1 0; min-width: 0; }
+.row > .btn.ghost, .row > .btn.quiet { flex: 0 1 auto; }
+.pill {
+  min-height: 40px; padding: 0 14px; border-radius: 999px; border: 0;
+  background: var(--accent-soft); color: var(--accent); font: 600 14px/1.2 var(--sans);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.pill.plain { background: var(--fill); color: var(--ink); }
+.tick { min-height: 40px; border-radius: 999px; border: 0; background: var(--fill); color: var(--ink-2); font: 700 13px/1 var(--sans); padding: 0 12px; }
+.icon-btn { border-radius: 999px; }
+.icon-btn:active { background: var(--fill); }
+
+/* ---------- choosing one of a few: the status picker ---------- */
+.choose { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choose button {
+  min-height: 48px; border-radius: var(--r-md); background: var(--fill); color: var(--ink);
+  display: flex; align-items: center; gap: 10px; padding: 0 12px; text-align: left;
+  font: 600 15px/1.2 var(--sans); transition: background .2s, box-shadow .2s;
+}
+.choose button i { width: 10px; height: 10px; border-radius: 50%; background: var(--dot, var(--ink-3)); flex: none; }
+.choose button[aria-pressed="true"] { background: var(--accent-soft); box-shadow: var(--ring); }
+.choose button[aria-pressed="true"]::after {
+  content: ""; margin-left: auto; width: 18px; height: 18px; flex: none; border-radius: 50%;
+  background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12.5l4 4 8-9'/%3E%3C/svg%3E") center / 12px no-repeat;
+}
+.choose .st-now { --dot: var(--accent); }
+.choose .st-waiting { --dot: var(--urgent); }
+.choose .st-better { --dot: var(--routine); }
+.choose .st-done { --dot: var(--ink-3); }
+.seg4 { display: none; }
+
+/* ---------- toast: small, dark, out of the way ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--nav-h) + var(--safe-b) + 12px); z-index: 40;
+  transform: translateX(-50%); width: max-content; max-width: min(360px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px 11px 14px; border-radius: 999px;
+  background: var(--toast-bg); color: var(--toast-ink); backdrop-filter: none;
+  font: 600 14.5px/1.3 var(--sans); letter-spacing: -.005em;
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .45), 0 0 0 .5px rgba(255, 255, 255, .08);
+  animation: toastIn .28s var(--ease);
+}
+.toast .t-ic { width: 20px; height: 20px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--routine); }
+.toast .t-ic svg { width: 12px; height: 12px; fill: none; stroke: #fff; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+.toast .t-ic.wait { background: var(--urgent); }
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 10px) scale(.98); } }
+@media (min-width: 1024px) { .toast { bottom: 24px; } }
+
+/* ---------- sheets ---------- */
+.sheet-wrap { background: var(--scrim); }
+.sheet {
+  background: var(--card); border-radius: var(--r-xl) var(--r-xl) 0 0; padding: 30px 18px calc(16px + var(--safe-b));
+  gap: 12px; box-shadow: 0 -12px 40px -16px rgba(0, 0, 0, .35); touch-action: pan-x;
+  transition: transform .25s var(--ease);
+}
+.sheet.dragging { transition: none; }
+.sheet::before { top: 9px; width: 40px; height: 5px; margin-left: -20px; background: var(--fill-2); }
+.sheet .sheet-x {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--fill); color: var(--ink-2); display: grid; place-items: center; z-index: 2;
+}
+.sheet .sheet-x svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
+.sheet > .kicker:first-child, .sheet > p.kicker:first-of-type { padding-right: 40px; }
+.sheet-title { font: 700 22px/1.2 var(--serif); letter-spacing: -.02em; padding-right: 36px; }
+.sheet .answer-box { background: var(--accent-soft); border-radius: var(--r-md); padding: 12px 14px; }
+.sheet input:not([type="date"]), .sheet input[type="date"], .sheet textarea { background: var(--fill); border: 0; border-radius: var(--r-md); }
+.sheet-foot { display: grid; gap: 10px; padding-top: 4px; }
+@media (min-width: 1024px) { .sheet { border-radius: 24px; padding-top: 22px; } .sheet::before { display: none; } }
+
+/* ---------- pages: a light control, dots when there are few ---------- */
+.pg-foot { grid-template-columns: 40px 1fr 40px; min-height: 40px; }
+.pg-foot .nav-arrow { width: 40px; height: 40px; border: 0; background: var(--fill); color: var(--ink); }
+.pg-foot .nav-arrow[disabled] { opacity: 0; pointer-events: none; }
+.pg-foot .nav-arrow svg { width: 18px; height: 18px; }
+.pg-dots { display: flex; justify-content: center; align-items: center; gap: 6px; }
+.pg-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--fill-2); transition: width .2s var(--ease), background .2s; }
+.pg-dots i.on { width: 18px; background: var(--accent); }
+
+/* ---------- small fixes the system implies ---------- */
+.linkcard { background: var(--fill); }
+.linkcard.hint { background: var(--fill); }
+.mchip { background: var(--fill); }
+.lcard, .zsec, .crow, .dcard, .kc, .prio, .qk, .qrow, .o, .tile2, .who-opt, .tile { box-shadow: var(--shadow); }
+.o, .tile2 { background: var(--card); border-radius: var(--r-lg); }
+.o:active, .tile2:active { background: var(--fill); }
+.sheet .who-opt, .sheet .lcard, .sheet .dq, .sheet .evd { background: var(--fill); box-shadow: none; }
+.sheet .qline .prio-n, .panel .qline .prio-n { background: var(--accent-soft); }
+
+/* Priority cards: number and title on one line, status under the title. */
+.prio-top { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; column-gap: .55em; row-gap: .35em; }
+.prio-top .prio-n { margin-top: .12em; }
+.prio-top .chip, .prio:not(.lead) .prio-top .chip { grid-column: 2; justify-self: start; margin-left: 0; }
+.prio.lead .prio-top { grid-template-columns: auto minmax(0, 1fr) auto; }
+.prio.lead .prio-top .chip { grid-column: 3; grid-row: 1; margin-top: .15em; }
+.prio-next { padding-left: 2.05em; }
+.upd-row .row > .btn { min-height: 44px; }
+
+/* Two-way switch (On its own / How it connects): the chosen side is lifted. */
+.seg2 { background: var(--fill); }
+.seg2 button[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg2 button[aria-selected="true"] { background: #636366; } }
+
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Priorities on their side are one compact line each. */
+  .prio-top, .prio.lead .prio-top { display: flex; align-items: center; gap: .5em; }
+  .prio-top .prio-n { margin-top: 0; }
+  /* Short sheets without pages: a two-column form instead of a squeezed one. */
+  .sheet:not(:has(> .pg)) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 16px; row-gap: 10px; padding-right: 18px; align-items: start; }
+  .sheet:not(:has(> .pg)) > * + * { margin-top: 0; }
+  .sheet:not(:has(> .pg)) > .sheet-x { position: absolute; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .sheet { padding-top: 18px; }
+  .sheet::before { display: none; }
+  .sheet:has(> .pg) { padding-right: calc(55% + 4px); }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .choose { gap: 6px; }
+  .choose button { min-height: 36px; font-size: 13.5px; padding: 0 10px; gap: 8px; }
+  .choose button[aria-pressed="true"]::after { width: 16px; height: 16px; background-size: 10px; }
+  .sheet-foot { gap: 6px; padding-top: 0; }
+  .sheet-foot .row > .btn, .sheet > .row > .btn { min-height: 40px; font-size: 15px; }
+  .sheet .sheet-title { font-size: 18px; }
+}

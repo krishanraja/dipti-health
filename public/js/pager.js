@@ -79,7 +79,11 @@ export function pager(box, items, { onRender, label = 'Page', start = 0, pin = f
     });
     const many = pages.length > 1;
     foot.hidden = !many;
-    n.textContent = many ? `${page + 1} of ${pages.length}` : '';
+    // Dots for a few pages, words for many.
+    n.className = 'pg-n' + (many && pages.length <= 7 ? ' pg-dots' : '');
+    n.innerHTML = !many ? '' : pages.length <= 7
+      ? pages.map((_, i) => `<i class="${i === page ? 'on' : ''}"></i>`).join('') + `<span class="sr">Page ${page + 1} of ${pages.length}</span>`
+      : `${page + 1} of ${pages.length}`;
     foot.querySelector('[data-prev]').disabled = page === 0;
     foot.querySelector('[data-next]').disabled = page >= pages.length - 1;
     box.setAttribute('aria-label', many ? `${label} ${page + 1} of ${pages.length}` : label);

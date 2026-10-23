@@ -178,7 +178,7 @@ function updatesCard(m) {
   const done = m.updatesDone || {};
   return `<div class="rcard upd"><p class="bk">Update ${isDipti() ? 'your' : "Dipti's"} Sheet?</p>
     ${m.answer.updates.map((u, i) => done[i] ? `<p class="upd-done">${done[i] === 'yes' ? '✓ ' + esc(u.say.replace(/\?$/, '')) + ': saved' : 'Left as it was'}</p>`
-      : `<div class="upd-row"><p>${esc(u.say)}</p><div class="row"><button class="pill" data-upd-no="${i}">No</button><button class="btn primary" data-upd-yes="${i}">Yes, update</button></div></div>`).join('')}
+      : `<div class="upd-row"><p>${esc(u.say)}</p><div class="row"><button class="btn" data-upd-no="${i}">Not now</button><button class="btn primary" data-upd-yes="${i}">Yes, update</button></div></div>`).join('')}
   </div>`;
 }
 

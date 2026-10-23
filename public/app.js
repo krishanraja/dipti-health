@@ -21,8 +21,17 @@ const who = () => (me().dipti ? 'Dipti' : me().name || 'app').slice(0, 40);
 const isWide = () => matchMedia('(min-width: 1024px)').matches;
 
 let toastTimer;
+// A short note at the bottom. A tick when something is done or saved, an
+// amber clock when it is waiting to sync, nothing for plain information.
+const TICK = '<svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg>';
+const CLOCK = '<svg viewBox="0 0 24 24"><path d="M12 7v5l3 2"/></svg>';
 function toast(msg, ms = 2600) {
-  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  const t = $('#toast');
+  const text = String(msg).replace(/\s*✓\s*$/, '').replace(/\s*✓\s*/g, ' ');
+  const kind = /will sync|waiting/i.test(text) ? 'wait' : /✓|saved|noted|checked|marked|added|updated|copied|done|glad/i.test(msg) ? 'ok' : '';
+  t.innerHTML = `${kind ? `<span class="t-ic ${kind === 'wait' ? 'wait' : ''}">${kind === 'wait' ? CLOCK : TICK}</span>` : ''}<span>${esc(text)}</span>`;
+  t.hidden = false;
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
 }
 
@@ -41,6 +50,7 @@ async function api(path, { method = 'GET', body, timeout = 15000 } = {}) {
 
 /* ---------------- sync state + offline write queue ---------------- */
 let canon = store.get('canon', null);
+let syncError = '';
 let session = {};
 
 function setSync(kind, text) {
@@ -57,12 +67,15 @@ async function loadCanon() {
   if (!session.sheetConfigured) { setSync('warn', 'Sheet not connected'); refreshAll(); return; }
   setSync('', 'Syncing');
   try {
-    canon = await api('/api/canon', { timeout: 14000 });
+    canon = await api('/api/canon', { timeout: 30000 });
     store.set('canon', canon);
+    syncError = '';
     setSync('ok', 'Up to date');
     refreshAll();
   } catch (e) {
     if (e.status === 401) return;
+    // Kept so a tap on the status says what went wrong, in plain words.
+    syncError = e.name === 'TimeoutError' ? 'The Sheet took too long to answer.' : e.status ? `The Sheet said: ${String(e.message).replace(/^sheet API: /, '')}` : 'No internet connection.';
     setSync(canon ? 'warn' : 'bad', canon ? 'Showing saved copy' : 'Offline');
   }
 }
@@ -96,7 +109,10 @@ async function flushQueue() {
   if (!left.length) toast('Saved everything that was waiting');
 }
 addEventListener('online', () => flushQueue().then(loadCanon));
-$('#sync').addEventListener('click', () => flushQueue().then(loadCanon));
+$('#sync').addEventListener('click', () => {
+  if (syncError) toast(`${syncError} Trying again now.`, 4200);
+  flushQueue().then(loadCanon);
+});
 
 /* ---------------- login / boot ---------------- */
 function showLogin() {

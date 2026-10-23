@@ -105,10 +105,14 @@ function col(tab, key) {
   return i + 1;
 }
 
-// Every data row as {key: text}, keyed by the app's names.
+// Every data row as {key: text}, keyed by the app's names. One read per tab
+// (headers and rows together), so reading the whole Sheet stays fast.
 function rowObjects(name) {
-  var m = headerMap(name);
-  return getRows(name).map(function (r) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+  if (!s || s.getLastRow() < 1 || s.getLastColumn() < 1) return [];
+  var all = s.getDataRange().getValues(), m = {};
+  all[0].forEach(function (h, i) { var k = String(h).trim(); if (k && m[k] === undefined) m[k] = i; });
+  return all.slice(1).map(function (r) {
     var o = {};
     TABS[name].cols.forEach(function (c) {
       var i = m[c[0]];

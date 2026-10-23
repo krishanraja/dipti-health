@@ -93,8 +93,8 @@ export function openPriority(id) {
       ${p.steps.length ? `<p class="kicker" data-keep>The plan</p>${p.steps.map((s, i) => `<p class="qline"><span class="prio-n">${i + 1}</span>${esc(s)}</p>`).join('')}` : ''}
       ${qs.length ? `<p class="kicker" data-keep>To ask ${esc(p.askWhom)}</p>${qs.map(q => `<p class="qline dotq">${esc(q.question)}</p>`).join('')}` : ''}
     </div>
-    <div class="sheet-foot"><p class="kicker">How is it going?</p><div class="seg4">${Object.entries(STATUS).map(([k, v]) => `<button data-st="${k}" aria-pressed="${p.status === k}">${esc(v.label)}</button>`).join('')}</div>
-    <div class="row"><button class="btn" data-edit>Change next step</button><button class="btn" data-ask>Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
+    <div class="sheet-foot"><p class="kicker">How is it going?</p><div class="choose" role="group" aria-label="How is it going?">${Object.entries(STATUS).map(([k, v]) => `<button class="st-${k}" data-st="${k}" aria-pressed="${p.status === k}"><i></i>${esc(v.label)}</button>`).join('')}</div>
+    <div class="row"><button class="btn tinted" data-edit>Change next step</button><button class="btn" data-ask>Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
     sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
       if (b.dataset.st === p.status) return;
       sheet.querySelectorAll('[data-st]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));

@@ -8,6 +8,12 @@
     },
     "api/photo.js": {
       "maxDuration": 60
+    },
+    "api/canon.js": {
+      "maxDuration": 30
+    },
+    "api/write.js": {
+      "maxDuration": 30
     }
   },
   "headers": [
