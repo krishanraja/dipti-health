@@ -2,6 +2,7 @@ import { mountToday, refreshToday } from '/js/today.js';
 import { mountRecord, refreshRecord, recordHome, recordSpoke, openSheet } from '/js/record.js';
 import { resultsText } from '/js/speech.js';
 import { canRecord, startRecording, transcribeBlob } from '/js/recorder.js';
+import { mountConditions, refreshConditions, conditionsHome, openCondition } from '/js/conditions.js';
 import { mountChat, refreshChat, sendToChat, checkPending, stopSpeaking, photoToChat, showChat } from '/js/chat.js';
 import { person, matchPerson } from '/js/people.js';
 import { briefText } from '/js/brief.js';
@@ -46,7 +47,7 @@ function setSync(kind, text) {
   const s = $('#sync'); s.className = 'sync ' + kind; s.querySelector('span').textContent = text;
 }
 
-function refreshAll() { refreshToday(); refreshRecord(); refreshChat(); sheetLink(); }
+function refreshAll() { refreshToday(); refreshRecord(); refreshConditions(); refreshChat(); sheetLink(); }
 function sheetLink() {
   const a = $('#sheetLink'), url = canon?.sheetUrl;
   a.hidden = !url; if (url) a.href = url;
@@ -173,7 +174,7 @@ async function boot() {
   document.body.classList.toggle('as-family', !me().dipti);
   document.querySelectorAll('[data-ask-label]').forEach(s => { s.textContent = `Ask ${DOCTOR.name}`; });
   $('#login').hidden = true; $('#app').hidden = false;
-  buildToday(); buildRecord(); buildChat();
+  buildToday(); buildRecord(); buildConditions(); buildChat();
   go(store.get('view', 'today'));
   await flushQueue();
   loadCanon();
@@ -183,10 +184,11 @@ async function boot() {
 /* ---------------- tabs ---------------- */
 document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
   if (b.dataset.go === 'record' && b.hasAttribute('aria-current')) recordHome();
+  if (b.dataset.go === 'conditions' && b.hasAttribute('aria-current')) conditionsHome();
   go(b.dataset.go);
 }));
 function go(name) {
-  if (!['today', 'record', 'ask'].includes(name)) name = 'today';
+  if (!['today', 'record', 'conditions', 'ask'].includes(name)) name = 'today';
   store.set('view', name);
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== name; });
   document.querySelectorAll('[data-go]').forEach(b => { if (b.dataset.go === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
@@ -198,15 +200,16 @@ function go(name) {
 function fit(box) {
   if (!box || !box.isConnected || !box.clientHeight) return;
   let fs = 18; box.style.setProperty('--fs', fs + 'px');
-  while (box.scrollHeight > box.clientHeight + 1 && fs > 13) { fs -= .5; box.style.setProperty('--fs', fs + 'px'); }
+  while (box.scrollHeight > box.clientHeight + 1 && fs > 12) { fs -= .5; box.style.setProperty('--fs', fs + 'px'); }
   const drops = [...box.querySelectorAll('.drop')];
   while (box.scrollHeight > box.clientHeight + 1 && drops.length) drops.pop().hidden = true;
 }
 function fitAll() { document.querySelectorAll('.view:not([hidden]) .fit').forEach(fit); }
+document.fonts?.ready.then(() => requestAnimationFrame(fitAll)); // text measures differently once fonts load
 let wasWide = isWide();
 addEventListener('resize', () => {
   requestAnimationFrame(fitAll);
-  if (isWide() !== wasWide) { wasWide = isWide(); refreshToday(); }
+  if (isWide() !== wasWide) { wasWide = isWide(); refreshToday(); refreshConditions(); }
 });
 
 /* ---------------- voice: shared dictation for text boxes ---------------- */
@@ -247,9 +250,12 @@ function listen(onText, onState) {
 
 /* ---------------- views ---------------- */
 function openAsk(text) { go('ask'); sendToChat(text); }
-const ctx = () => ({ canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
+const ctx = () => ({ canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
 function buildToday() { mountToday($('#today'), ctx()); }
 function buildRecord() { mountRecord($('#rec'), ctx()); }
+function buildConditions() { mountConditions($('#conds'), ctx()); }
+// Lets the no-scroll check (scripts/noscroll.mjs) open each condition directly.
+window.__openCondition = id => { go('conditions'); openCondition(id); };
 function buildChat() { mountChat($('#chat'), { ...ctx(), role: () => session.role, people: () => store.get('people', []), choose: id => choose(id, { reload: true }), showLogin, setSomeone: () => settingsSheet() }); }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkPending(); });
 
@@ -265,18 +271,35 @@ if (window.visualViewport) {
 }
 
 /* ---------------- summary for a doctor ---------------- */
+// The summary in blocks of a few lines; a heading stays with what follows it.
+function briefBlocks(text) {
+  const out = [];
+  text.split(/\n{2,}/).forEach(block => {
+    const lines = block.split('\n');
+    const head = lines.length > 1 && !/^[-•*]/.test(lines[0]) ? lines.shift() : null;
+    if (head) out.push({ text: head, head: true });
+    let cur = [];
+    for (const l of lines) {
+      if (cur.length && (cur.join('\n') + l).length > 170) { out.push({ text: cur.join('\n') }); cur = []; }
+      cur.push(l);
+    }
+    if (cur.length) out.push({ text: cur.join('\n') });
+  });
+  return out;
+}
 function shareBrief(doctor = null) {
   const docs = canon?.clinicians || [];
   if (doctor === null && docs.length) {
     return openSheet(`<p class="kicker">Summary for a doctor</p><h3 class="sheet-title">Who is it for?</h3>
-      <div class="who-list compact">${docs.map(d => `<button class="who-opt" data-doc="${esc(d.name)}"><span class="who-ic f">${esc(d.name.replace(/^Dr\.?\s*/i, '').charAt(0))}</span><span class="who-t"><b>${esc(d.name)}</b></span>${CHEVRON}</button>`).join('')}
+      <div class="who-list compact" data-pages="Doctors">${docs.map(d => `<button class="who-opt" data-doc="${esc(d.name)}"><span class="who-ic f">${esc(d.name.replace(/^Dr\.?\s*/i, '').charAt(0))}</span><span class="who-t"><b>${esc(d.name)}</b></span>${CHEVRON}</button>`).join('')}
       <button class="who-opt" data-doc=""><span class="who-ic o">+</span><span class="who-t"><b>Any doctor (everything)</b></span>${CHEVRON}</button></div>
       <button class="btn ghost" data-close>Cancel</button>`, (sheet, close) => {
-      sheet.querySelectorAll('[data-doc]').forEach(b => b.onclick = () => { close(); shareBrief(b.dataset.doc || ''); });
+      sheet.addEventListener('click', e => { const b = e.target.closest('[data-doc]'); if (b) { close(); shareBrief(b.dataset.doc || ''); } });
     });
   }
   const text = briefText(canon || {}, { doctor: doctor || null });
-  openSheet(`<p class="kicker">Summary${doctor ? ' for ' + esc(doctor) : ''}</p><pre class="brief">${esc(text)}</pre>
+  // The summary is for sending; here it is shown a block at a time.
+  openSheet(`<p class="kicker">Summary${doctor ? ' for ' + esc(doctor) : ''}</p><div class="brief" data-pages="Summary">${briefBlocks(text).map(b => `<pre${b.head ? ' data-keep' : ''}>${esc(b.text)}</pre>`).join('')}</div>
     <div class="row"><button class="btn ghost" data-close>Close</button><button class="btn primary grow" data-send>${navigator.share ? 'Send' : 'Copy'}</button></div>`, (sheet, close) => {
     sheet.querySelector('[data-send]').onclick = async () => {
       try {
@@ -296,7 +319,7 @@ function settingsSheet() {
   const current = m.dipti ? 'dipti' : listed ? m.name : 'other';
   openSheet(`
   <p class="kicker">Who is using this</p>
-  <div class="who-list compact">${whoOptions(current)}</div>
+  <div class="who-list compact" data-pages="People">${whoOptions(current)}</div>
   <div class="someone" ${current === 'other' ? '' : 'hidden'}>
     <label class="kicker" for="whoNameSet">Your name, shown next to what you add</label>
     <input id="whoNameSet" maxlength="40" placeholder="First name">
@@ -306,7 +329,8 @@ function settingsSheet() {
   <button class="btn primary" data-close>Done</button>`, (sheet, close) => {
     const w = sheet.querySelector('#whoNameSet'), box = sheet.querySelector('.someone');
     w.value = current === 'other' ? store.get('who', '') : '';
-    sheet.querySelectorAll('[data-who]').forEach(b => b.onclick = () => {
+    sheet.addEventListener('click', e => {
+      const b = e.target.closest('[data-who]'); if (!b) return;
       if (b.dataset.who === 'other') { box.hidden = false; sheet.querySelectorAll('[data-who]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); w.focus(); return; }
       if (b.dataset.who === current) return;
       choose(b.dataset.who, { reload: true });

@@ -41,7 +41,10 @@
         "Evidence",
         "Notes",
         "Source",
-        "UpdatedAt"
+        "UpdatedAt",
+        "Key",
+        "AlsoCalled",
+        "Plain"
       ]
     },
     "Medications": {
@@ -132,7 +135,9 @@
         "Entities",
         "AskYourDoctor",
         "Text",
-        "Sources"
+        "Sources",
+        "Plain",
+        "AskPlain"
       ]
     },
     "Sources": {

@@ -56,6 +56,7 @@
     <nav class="toptabs" aria-label="Sections (wide screens)">
       <button class="tt" data-go="today">Overview</button>
       <button class="tt" data-go="record">Record</button>
+      <button class="tt" data-go="conditions">Conditions</button>
       <button class="tt" data-go="ask" data-ask-label>Ask</button>
     </nav>
     <span class="top-right">
@@ -77,6 +78,11 @@
       <div class="rec" id="rec"></div>
     </section>
 
+    <!-- CONDITIONS -->
+    <section class="view" id="view-conditions" data-view="conditions" hidden>
+      <div class="conds" id="conds"></div>
+    </section>
+
     <!-- ASK THE DOCTOR -->
     <section class="view chat-view" id="view-ask" data-view="ask" hidden>
       <div class="chat" id="chat"></div>
@@ -88,6 +94,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="10" r="4"/><path d="M3 18c3-2.5 6-2.5 9 0s6 2.5 9 0"/></svg><span>Today</span></button>
     <button class="nav-btn" data-go="record">
       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>My record</span></button>
+    <button class="nav-btn" data-go="conditions">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="18" r="2"/><path d="M7 7l3 3M17 7l-3 3M8 17.5l2.2-3.3M16.5 16.5l-2.3-2.4"/></svg><span>Conditions</span></button>
     <button class="nav-btn" data-go="ask">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg><span data-ask-label>Ask</span></button>
   </nav>

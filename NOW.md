@@ -3,8 +3,8 @@ repo: krishanraja/dipti-health
 product: Steady
 as_of: 2026-10-23
 head: see git log
-lifecycle: built, not deployed
-production_url: none
+lifecycle: deployed (production branch claude/magical-mayer-ojpf7z)
+production_url: https://xrds.au
 state_doc: README.md
 history_log: docs/DECISIONS.md
 truth_files: [docs/NORTH_STAR.md]
@@ -29,7 +29,7 @@ North Star: **proposed, not set** (see `docs/NORTH_STAR.md`). Current value: 0, 
 
 What is built and verified locally:
 
-- Phone app: Today, Record and Ask Dr Ellie.
+- Phone app: Today, Record, Conditions and Ask Dr Ellie.
 - Desktop overview at 1024 px and wider.
 - Apps Script data layer with 14 tabs.
 - Red-flag rules.
@@ -38,18 +38,21 @@ What is built and verified locally:
 - Doctor summaries.
 - Seed workbook built from her record.
 
-Results: `npm test` 62/62 and `node scripts/simulate.mjs` 27/27. Screens were checked at 390 px and 1440 px, in light and dark mode, with her real record loaded locally only.
+- Conditions tab: one condition on its own, and a map of how it connects (D12, D13).
+- No scrolling anywhere except the chat thread (D14). `scripts/noscroll.mjs` checks every screen, list page, sheet, panel and flow at 12 sizes (320×568 to 1920×1080, portrait and landscape), with her real record loaded locally only.
+
+Results: `npm test` 72/72, `node scripts/simulate.mjs` 27/27, `scripts/noscroll.mjs` 1141 screens at 12 sizes with the last 8 failures fixed and re-checked at the affected sizes.
 
 ## What changed recently
 
-- 23 Oct 2026: first build. See `docs/DECISIONS.md` (D1–D10).
+- 23 Oct 2026: first build. See `docs/DECISIONS.md` (D1–D11).
+- 23 Oct 2026 (later): Conditions tab, no-scroll on every device, header-based Sheet columns (D12–D17). Vercel project live on xrds.au.
 
 ## What is next and waiting on Krish
 
-1. Import `Dipti-canon.xlsx` into Google Sheets (Krish's account).
-2. Paste `apps-script/Code.gs` into the Sheet's Apps Script, run `setup()` and deploy it as a web app.
-3. Create the Vercel project from this repo and set the environment variables listed in `README.md`, including `OPENAI_API_KEY`.
-4. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.
+1. Re-import the rebuilt `Dipti-canon.xlsx` (it adds the Conditions and research-pack plain-language columns), paste the new `apps-script/Code.gs`, run `setup()`, and publish a new version of the deployment.
+2. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.
+3. Next build: the fact checker (Krish, 23 Oct): a few "still right?" checks a day, an Appointments tab, and Ellie proposing updates that Dipti confirms.
 5. Confirm or replace the North Star draft. The name "Steady" and the persona "Dr Ellie" are confirmed.
 
 ## Read next
@@ -58,4 +61,4 @@ Results: `npm test` 62/62 and `node scripts/simulate.mjs` 27/27. Screens were ch
 
 ## Do not trust
 
-- Anything about real AI answers or the live Sheet. Neither has been run yet: every check so far used the emulator and a scripted model.
+- Anything about real AI answers against the live Sheet: every automated check so far used the emulator and a scripted model.

@@ -1,5 +1,23 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-10-23 (later): Conditions tab and no-scroll
+
+### Done and verified (locally)
+
+- [x] Conditions tab (`public/js/conditions.js`, `conditions-model.js`, tests in `test/conditions-model.test.js`). Links come only from interaction rows in the Evidence tab; labels and plain text come from the new `Plain`/`AskPlain`/`AlsoCalled` columns.
+- [x] Pager (`public/js/pager.js`) used by Record lists, Conditions, the overview, panels and sheets. `autoPages()` turns any `[data-pages]` block into pages; wire clicks by delegation.
+- [x] Code.gs finds columns by header; `setup()` adds missing ones (`test/sheet.test.js`).
+- [x] `scripts/noscroll.mjs`: 12 sizes, both logins, real seed. Run it after any screen change.
+
+### Not verified (needs Krish)
+
+- [ ] The live Sheet has the new columns and plain text (re-import + `setup()` + new deployment version).
+
+### Next
+
+- Fact checker (Krish's decisions: a few checks a day; new Appointments tab; Ellie proposes, Dipti confirms; build without a mock).
+
+
 ## 2026-10-23: first build
 
 ### Done and verified (locally)

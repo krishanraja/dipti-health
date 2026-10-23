@@ -13,12 +13,15 @@ It is built on the design system, architecture and mission of Beside (`krishanra
   - Trends: lab results over time.
 
   Clicking any card opens its detail and the graded evidence behind it.
-- **Record.** Priorities, medicines, results, questions, things to clear up, doctors, conditions and history. Each section links to its tab in the Sheet.
+- **Record.** Priorities, medicines, results, questions, things to clear up, doctors and history. Each section links to its tab in the Sheet.
+- **Conditions.** One condition at a time. "On its own" shows what it is, where it stands (long-term, being watched or settled; since when; who looks after it), the medicines and results in her record that belong to it, and the questions for that doctor. "How it connects" draws a map of everything the research pack links it to, and tapping a dot gives one plain sentence and one question she could ask. On wide screens the list, the condition and its map sit side by side.
 - **Ask Dr Ellie.** A chat with a young English GP who knows her whole record and the research pack in her Sheet. Replies are streamed. She can use voice or a photo.
 - **Summary for a doctor.** Pick a doctor and get a short brief with only what that doctor looks after and only the questions for them.
 
 ### How it behaves
 
+- **Nothing scrolls, on any device.** Every screen fits the window. Long lists turn pages (arrows, swipe, or the arrow keys) instead of scrolling, and each list re-packs itself when the window changes size. The one exception is the chat thread with Dr Ellie. `scripts/noscroll.mjs` checks every screen at 12 sizes, from a 320 px phone to a 1920 px desktop, in portrait and landscape.
+- **One order on every screen.** What it is, then where it stands, then one action, then the detail behind a tap.
 - **Calm and proportionate.** Every log and reply gives one "how much to worry" level and one next step. It never lists rare possibilities. A repeat question within a day is answered by pointing back to the plan. Lists of "possible causes" in the research pack are for the doctor's reasoning and are never shown on screen.
 - **Never under-calls a real red flag.**
   - Deterministic rules run before any AI. They cover steroid sick-day signs, dental infection, liver and gut warning signs, collapse, and medicine reactions.
@@ -53,7 +56,7 @@ phone / laptop ──► Vercel (public/ static app + api/ functions)
 2. **Add the API.**
    1. In the Sheet, open Extensions › Apps Script.
    2. Paste `apps-script/Code.gs` and save.
-   3. Run `setup()` once and approve the permissions. The execution log prints the secret.
+   3. Run `setup()` once and approve the permissions. The execution log prints the secret. `setup()` is safe to run again at any time: it adds any missing tab or column (at the end of the tab) and never touches existing rows.
    4. Choose Deploy › New deployment › Web app, with Execute as: Me and Who has access: Anyone. Copy the `/exec` URL.
 3. **Create the Vercel project** from this GitHub repo. No build step is needed.
 4. **Set the environment variables** in Vercel:
@@ -71,6 +74,8 @@ phone / laptop ──► Vercel (public/ static app + api/ functions)
 
 5. **Share the Sheet** with Dipti as an editor.
 
+**After a Code.gs update:** paste the new `apps-script/Code.gs`, run `setup()` (it adds any new columns), then Deploy › Manage deployments › edit › Version: New version › Deploy. The `/exec` URL stays the same. The app finds columns by their header text, so columns can be moved in the Sheet without breaking anything; do not rename a header.
+
 ## Develop
 
 ```
@@ -78,6 +83,7 @@ npm install
 npm test                                     # unit tests
 node scripts/simulate.mjs                    # Dipti + Krish end to end against the real Code.gs (emulated)
 MOCK_SHEET=1 MOCK_AI=1 node scripts/dev-server.mjs   # http://localhost:3000, codes "dipti-local" / "local"
+node scripts/noscroll.mjs http://localhost:3000 [shots dir] [--quick]   # proves nothing scrolls or is cut off, at 12 sizes
 node scripts/schema.mjs                      # regenerate data/schema.json after changing TABS in Code.gs
 python3 -I scripts/build_seed.py <record.json> <kb dir> <out dir>   # rebuild the seed workbook (data stays outside the repo)
 ```

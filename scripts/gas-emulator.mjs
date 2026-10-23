@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import crypto from 'node:crypto';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
@@ -36,22 +37,26 @@ class Range {
   setValue(v) {
     const row = this.sheet.rows[this.r - 1] || (this.sheet.rows[this.r - 1] = []);
     row[this.c - 1] = coerce(v);
+    this.sheet.width = Math.max(this.sheet.width, this.c);
     return this;
   }
 }
 
 class Sheet {
-  constructor(name, headers) { this.name = name; this.rows = [headers.slice()]; this.width = headers.length; }
+  constructor(name, headers) { this.name = name; this.rows = headers ? [headers.slice()] : []; this.width = headers ? headers.length : 0; }
   getLastRow() { return this.rows.length; }
+  setFrozenRows() { return this; }
   getLastColumn() { return this.width; }
   getRange(r, c, nr, nc) { return new Range(this, r, c, nr, nc); }
   appendRow(values) { this.rows.push(values.map(coerce)); this.width = Math.max(this.width, values.length); return this; }
 }
 
-export function createSheetApi({ secret = 'mock', seed = null } = {}) {
-  const tabs = {};
+export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null } = {}) {
+  const tabs = {}, props = { APP_SECRET: secret }, logs = [];
   const ctx = {
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit' }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, insertSheet: n => (tabs[n] = new Sheet(n, null)), getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit' }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
+    Logger: { log: m => logs.push(String(m)) },
     ContentService: {
       MimeType: { JSON: 'application/json' },
       createTextOutput: text => ({ text, setMimeType() { return this; }, getContent() { return this.text; } }),
@@ -61,6 +66,7 @@ export function createSheetApi({ secret = 'mock', seed = null } = {}) {
         const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value]));
         return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
       },
+      getUuid: () => crypto.randomUUID(),
     },
     JSON, Date, String, Number, Math, parseInt, Error,
   };
@@ -68,12 +74,15 @@ export function createSheetApi({ secret = 'mock', seed = null } = {}) {
   vm.createContext(ctx);
   vm.runInContext(code, ctx, { filename: 'Code.gs' });
   // The tabs and headers come from Code.gs itself, the same list setup() uses.
-  for (const [name, t] of Object.entries(vm.runInContext('TABS', ctx))) tabs[name] = new Sheet(name, t.cols.map(c => c[0]));
+  // oldHeaders {Tab: [headers]} stands in for a Sheet made by an older Code.gs.
+  for (const [name, t] of Object.entries(vm.runInContext('TABS', ctx))) tabs[name] = new Sheet(name, oldHeaders?.[name] || t.cols.map(c => c[0]));
+  if (oldHeaders) for (const name of Object.keys(oldHeaders)) if (!oldHeaders[name]) delete tabs[name];
 
   if (seed) seedTabs(tabs, seed, vm.runInContext('TABS', ctx));
 
   return {
-    tabs,
+    tabs, logs,
+    setup: () => ctx.setup(),
     get: params => JSON.parse(ctx.doGet({ parameter: params }).getContent()),
     post: body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent()),
   };

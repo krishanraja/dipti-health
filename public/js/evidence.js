@@ -14,18 +14,23 @@ const STOP = new Set('the and with for from into her his not test low high pain 
 const entitiesOf = row => String(row.entities || '').split(/[\s,;|]+/).filter(Boolean);
 
 // Names for each entity id, from the rows that describe one entity
-// (kind medication | lab | condition), e.g. MED_X -> ["brand", "generic"].
+// (kind medication | lab | condition | name), e.g. MED_X -> ["brand", "generic"],
+// plus the everyday label in the row's Plain column ("tummy pain").
 export function entityNames(evidence = []) {
   const names = {};
-  for (const r of evidence) {
-    if (!/^(medication|lab|condition|symptom)$/.test(r.kind)) continue;
-    const id = entitiesOf(r)[0] || r.id;
-    const title = String(r.title || '').split(':')[0];
+  const add = (id, title) => {
     const ws = words(title).filter(w => !STOP.has(w));
-    if (!ws.length) continue;
+    if (!ws.length) return;
     const set = names[id] ||= new Set();
     set.add(words(title).join(' '));
     ws.filter(w => w.length >= 5).forEach(w => set.add(w));
+  };
+  for (const r of evidence) {
+    const one = /^(medication|lab|condition|symptom|name)$/.test(r.kind);
+    if (!one && r.kind !== 'symptom_attribution') continue;
+    const id = entitiesOf(r)[0] || r.id;
+    if (one) add(id, String(r.title || '').split(':')[0]);
+    if (r.plain) add(id, String(r.plain).replace(/\(.*?\)/g, ''));
   }
   return Object.fromEntries(Object.entries(names).map(([k, v]) => [k, [...v]]));
 }
@@ -53,7 +58,8 @@ export function related(evidence = [], ids = [], k = 8) {
 // inside a size budget (the whole pack is small enough to fit).
 export function evidenceText(evidence = [], sources = [], budget = 45000) {
   if (!evidence.length) return '(The research pack is not in the Sheet yet.)';
-  const rows = [...evidence].sort((a, b) => rank(a) - rank(b));
+  // 'name' rows only label an entity; they carry no evidence.
+  const rows = evidence.filter(r => r.kind !== 'name').sort((a, b) => rank(a) - rank(b));
   const L = [];
   for (const r of rows) {
     const tags = [r.kind, r.severity && `severity ${r.severity}`, r.grade && `grade ${r.grade}`, r.appliesWhen && `applies: ${r.appliesWhen}`].filter(Boolean).join(', ');

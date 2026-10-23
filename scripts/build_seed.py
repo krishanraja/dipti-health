@@ -2,6 +2,9 @@
 
 Inputs live OUTSIDE this public repo:
   record.json   her record, transcribed from the health corpus, dental report and calls
+  plain.json    (beside record.json) plain-language words: each condition's key, short
+                names and summary; each entity's everyday label; each interaction's
+                plain meaning and the question in her own words
   kb/           the research pack (knowledge_base.json, rag_chunks.jsonl)
 Outputs (also outside the repo):
   Dipti-canon.xlsx   import into Google Sheets (one tab per Sheet tab, headers from data/schema.json)
@@ -24,14 +27,14 @@ COLS = {
     'Meta': ['key', 'value'],
     'Profile': ['key', 'value', 'source', 'updated', 'verified'],
     'Priorities': ['id', 'rank', 'title', 'status', 'why', 'plan', 'nextStep', 'askWhom', 'updated'],
-    'Conditions': ['name', 'status', 'since', 'evidence', 'notes', 'source', 'updated'],
+    'Conditions': ['name', 'status', 'since', 'evidence', 'notes', 'source', 'updated', 'key', 'aliases', 'plain'],
     'Medications': ['name', 'generic', 'dose', 'timing', 'rx', 'purpose', 'status', 'source', 'updated'],
     'TestResults': ['date', 'test', 'result', 'range', 'lab', 'notes', 'source'],
     'CheckIns': ['tsUTC', 'tsLocal', 'by', 'tooth', 'abdomen', 'fatigue', 'sleep', 'bowels', 'mood', 'verdict', 'notes'],
     'Questions': ['id', 'question', 'askWhom', 'priority', 'status', 'answer', 'updated'],
     'KnowledgeGaps': ['id', 'gap', 'whatAnswersIt', 'stepToClose', 'status', 'updated'],
     'Clinicians': ['name', 'role', 'owns', 'contact', 'lastSeen', 'notes'],
-    'Evidence': ['id', 'kind', 'title', 'severity', 'grade', 'appliesWhen', 'entities', 'ask', 'text', 'sources'],
+    'Evidence': ['id', 'kind', 'title', 'severity', 'grade', 'appliesWhen', 'entities', 'ask', 'text', 'sources', 'plain', 'askPlain'],
     'Sources': ['id', 'type', 'grade', 'title', 'year', 'url'],
     'Notes': ['tsUTC', 'by', 'text', 'tag'],
     'Changelog': ['ts', 'tab', 'key', 'old', 'new', 'by', 'source'],
@@ -41,7 +44,7 @@ CANON_KEY = {'Priorities': 'priorities', 'Conditions': 'conditions', 'Medication
              'Evidence': 'evidence', 'Sources': 'sources', 'Notes': 'notes', 'Changelog': 'changelog'}
 
 
-def build(record, kb_dir):
+def build(record, kb_dir, plain):
     kb = json.load(open(os.path.join(kb_dir, 'knowledge_base.json')))
     chunks = [json.loads(line) for line in open(os.path.join(kb_dir, 'rag_chunks.jsonl')) if line.strip()]
     src = 'Health corpus 23 Oct 2026'
@@ -52,7 +55,11 @@ def build(record, kb_dir):
     for p in record['priorities']:
         c['priorities'].append({**p, 'updated': TODAY})
     for name, status, since, ev, notes in record['conditions']:
-        c['conditions'].append({'name': name, 'status': status, 'since': since, 'evidence': ev, 'notes': notes, 'source': src, 'updated': TODAY})
+        key, aliases, words = plain['conditions'][name]
+        # Status groups the Conditions tab: long-term, watching, or settled.
+        status = 'long-term' if name in plain['longTerm'] else 'settled' if status == 'resolved' else 'watching'
+        c['conditions'].append({'name': name, 'status': status, 'since': since, 'evidence': ev, 'notes': notes, 'source': src, 'updated': TODAY,
+                                'key': key, 'aliases': aliases, 'plain': words})
     for name, generic, dose, timing, rx, purpose, status, note in record['medications']:
         c['medications'].append({'name': name, 'generic': generic, 'dose': dose, 'timing': timing, 'rx': rx,
                                  'purpose': purpose + (f'. {note}' if note else ''), 'status': status, 'source': '23 Oct list vs 8 Oct prescription', 'updated': TODAY})
@@ -97,9 +104,23 @@ def build(record, kb_dir):
             ask = recs[cid]['action']
         else:
             title = cid
+        ents = ch.get('entities') or []
+        words, ask_plain = '', ''
+        if kind == 'interaction':
+            words, ask_plain = plain['interactions'][cid]
+        elif kind in ('medication', 'lab', 'symptom_attribution'):
+            words = plain['labels'].get(ents[0] if ents else cid, '')
         c['evidence'].append({'id': cid, 'kind': kind, 'title': title, 'severity': ch.get('severity', ''), 'grade': ch.get('evidence', ''),
-                              'appliesWhen': ch.get('applies_when', ''), 'entities': ' '.join(ch.get('entities') or []), 'ask': ask,
-                              'text': ch['text'], 'sources': ' '.join(ch.get('source_ids') or [])})
+                              'appliesWhen': ch.get('applies_when', ''), 'entities': ' '.join(ents), 'ask': ask,
+                              'text': ch['text'], 'sources': ' '.join(ch.get('source_ids') or []), 'plain': words, 'askPlain': ask_plain})
+    # Every entity an interaction names gets an everyday label. Entities with
+    # no row of their own (past medicines, some symptoms) get a short 'name' row.
+    labelled = {(r['entities'].split() or [''])[0] for r in c['evidence'] if r['kind'] in ('medication', 'lab', 'symptom_attribution')}
+    full = {m['id']: m['name'] for m in kb['medications_historical']} | {s['id']: s['name'] for s in kb['symptoms']} | {l['id']: l['name'] for l in kb['labs']}
+    wanted = sorted({e for i in kb['interactions'] for e in i['members'] if not e.startswith('COND_')} - labelled)
+    for e in wanted:
+        c['evidence'].append({'id': e, 'kind': 'name', 'title': full.get(e, e), 'severity': '', 'grade': '', 'appliesWhen': '', 'entities': e,
+                              'ask': '', 'text': '', 'sources': '', 'plain': plain['labels'][e], 'askPlain': ''})
     for s in kb['sources']:
         c['sources'].append({'id': s['id'], 'type': s.get('type', ''), 'grade': s.get('grade', ''), 'title': s.get('title', ''), 'year': str(s.get('year', '')), 'url': s.get('url', '')})
     return c
@@ -137,7 +158,8 @@ def write_xlsx(c, path):
 
 if __name__ == '__main__':
     record_path, kb_dir, out = sys.argv[1:4]
-    canon = build(json.load(open(record_path)), kb_dir)
+    plain = json.load(open(os.path.join(os.path.dirname(os.path.abspath(record_path)), 'plain.json')))
+    canon = build(json.load(open(record_path)), kb_dir, plain)
     os.makedirs(out, exist_ok=True)
     write_xlsx(canon, os.path.join(out, 'Dipti-canon.xlsx'))
     json.dump(canon, open(os.path.join(out, 'canon.json'), 'w'), ensure_ascii=False, indent=1)

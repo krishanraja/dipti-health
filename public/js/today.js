@@ -41,7 +41,7 @@ function render() {
   const name = you() ? 'Dipti' : ctx.me().name || '';
 
   root.innerHTML = `<div class="fit today-home">
-    <div class="hello"><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}</h1><p>${esc(date)}</p></div>
+    <div class="hello"><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}</h1><p class="drop">${esc(date)}</p></div>
     <p class="kicker">${you() ? 'Your' : "Dipti's"} priorities</p>
     <div class="prios">${pr.map((p, i) => `<button class="prio ${i === 0 ? 'lead' : ''}" data-p="${esc(p.id)}">
         <span class="prio-top"><span class="prio-n">${i + 1}</span><b>${esc(p.title)}</b><i class="chip ${p.statusInfo.tone}">${esc(p.statusInfo.label)}</i></span>
@@ -79,31 +79,45 @@ export function openPriority(id) {
   const p = priorities(canon).find(x => x.id === id);
   if (!p) return;
   const qs = questionsByDoctor(canon).filter(g => p.askWhom && g.who.toLowerCase().includes(p.askWhom.toLowerCase().split(/[,(]/)[0].trim())).flatMap(g => g.questions).slice(0, 4);
-  ctx.openSheet(`<p class="kicker">Priority</p><h3 class="sheet-title">${esc(p.title)}</h3>
-    ${p.why ? `<p class="soft">${esc(p.why)}</p>` : ''}
-    ${p.nextStep ? `<div class="answer-box"><p class="kicker">Next step</p><p>${esc(p.nextStep)}</p></div>` : ''}
-    ${p.steps.length ? `<div><p class="kicker">The plan</p><ol class="plan-steps">${p.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol></div>` : ''}
-    ${qs.length ? `<div><p class="kicker">To ask ${esc(p.askWhom)}</p><ul class="plain">${qs.map(q => `<li>${esc(q.question)}</li>`).join('')}</ul></div>` : ''}
-    <div><p class="kicker">How is it going?</p><div class="seg4">${Object.entries(STATUS).map(([k, v]) => `<button data-st="${k}" aria-pressed="${p.status === k}">${esc(v.label)}</button>`).join('')}</div></div>
-    <label class="kicker" for="nextStep">Change the next step</label>
-    <textarea id="nextStep" rows="2" maxlength="300" placeholder="e.g. Appointment booked for Tuesday">${esc(p.nextStep)}</textarea>
-    <div class="row"><button class="btn" data-ask>Ask ${esc(DOCTOR.name)}</button><button class="btn primary grow" data-save>Save</button></div>`, (sheet, close) => {
-    let status = p.status;
-    sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = () => { status = b.dataset.st; sheet.querySelectorAll('[data-st]').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
+  // What it is and where it stands first; the plan and questions page below;
+  // the actions stay fixed at the bottom.
+  ctx.openSheet(`<p class="kicker">Priority ${esc(p.rank || '')}</p><h3 class="sheet-title">${esc(p.title)}</h3>
+    <div data-pages="${esc(p.title)}">
+      ${p.nextStep ? `<div class="answer-box"><p class="kicker">Next step</p><p>${esc(p.nextStep)}</p></div>` : ''}
+      ${p.why ? `<p class="soft">${esc(p.why)}</p>` : ''}
+      ${p.steps.length ? `<p class="kicker" data-keep>The plan</p>${p.steps.map((s, i) => `<p class="qline"><span class="prio-n">${i + 1}</span>${esc(s)}</p>`).join('')}` : ''}
+      ${qs.length ? `<p class="kicker" data-keep>To ask ${esc(p.askWhom)}</p>${qs.map(q => `<p class="qline dotq">${esc(q.question)}</p>`).join('')}` : ''}
+    </div>
+    <div class="sheet-foot"><p class="kicker">How is it going?</p><div class="seg4">${Object.entries(STATUS).map(([k, v]) => `<button data-st="${k}" aria-pressed="${p.status === k}">${esc(v.label)}</button>`).join('')}</div>
+    <div class="row"><button class="btn" data-edit>Change next step</button><button class="btn" data-ask>Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
+    sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
+      if (b.dataset.st === p.status) return;
+      sheet.querySelectorAll('[data-st]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      savePriority(canon, p, { status: b.dataset.st });
+    });
     sheet.querySelector('[data-ask]').onclick = () => { close(); ctx.openAsk(`About ${you() ? 'my' : "Dipti's"} ${p.title.toLowerCase()}: what is the most useful thing to do next?`); };
-    sheet.querySelector('[data-save]').onclick = async () => {
+    sheet.querySelector('[data-edit]').onclick = () => { close(); editNextStep(canon, p); };
+  });
+}
+
+function editNextStep(canon, p) {
+  ctx.openSheet(`<p class="kicker">${esc(p.title)}</p><h3 class="sheet-title">What is the next step?</h3>
+    <textarea id="nextStep" rows="3" maxlength="300" placeholder="e.g. Appointment booked for Tuesday">${esc(p.nextStep)}</textarea>
+    <div class="row"><button class="btn ghost" data-close>Cancel</button><button class="btn primary grow" data-save>Save</button></div>`, (sheet, close) => {
+    sheet.querySelector('[data-save]').onclick = () => {
       const nextStep = sheet.querySelector('#nextStep').value.trim();
-      const payload = { id: p.id };
-      if (status !== p.status) payload.status = status;
-      if (nextStep !== p.nextStep) payload.nextStep = nextStep;
       close();
-      if (Object.keys(payload).length === 1) return;
-      const row = (canon.priorities || []).find(x => x.id === p.id); if (row) Object.assign(row, payload);
-      const r = await ctx.save('priority', payload);
-      ctx.toast(r.ok ? 'Saved to your Sheet' : 'Saved on this device, will sync');
-      refreshToday(); if (r.ok) ctx.reload();
+      if (nextStep !== p.nextStep) savePriority(canon, p, { nextStep });
     };
   });
+}
+
+async function savePriority(canon, p, change) {
+  const row = (canon.priorities || []).find(x => x.id === p.id); if (row) Object.assign(row, change);
+  Object.assign(p, change);
+  const r = await ctx.save('priority', { id: p.id, ...change });
+  ctx.toast(r.ok ? 'Saved to your Sheet' : 'Saved on this device, will sync');
+  refreshToday(); if (r.ok) ctx.reload();
 }
 
 /* ---------- full-screen flows (check-in, log) ---------- */

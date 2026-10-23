@@ -34,10 +34,18 @@ Endpoints:
   - `priority {id?, title?, rank?, status now|waiting|better|done?, why?, plan?, nextStep?, askWhom?}`
   - `clinician {name, role?, owns?, contact?, lastSeen?, notes?}`
   - `profile {key, value}`
-  - `condition {name, status?, notes?, since?, evidence?}`
+  - `condition {name, status long-term|watching|settled?, notes?, since?, evidence?, aliases?, plain?}`
   - `medication {name, generic?, dose?, timing?, rx?, purpose?, status current|stopped|check?}`
 
 Every edit to an overwrite tab is written to `Changelog` with who made it.
+
+Columns are found by their header text in row 1, not by position. `setup()` adds any header in `TABS` that a tab is missing, at the end.
+
+## Tabs added for Conditions
+
+- `Conditions`: `Key` (the research pack id, e.g. `COND_X`), `AlsoCalled` (other names separated by `;`, the first one is the short name used on screen), `Plain` (one calm sentence on what it is). `Status` groups the tab: `long-term`, `watching` or `settled` (`active` and `resolved` are read as watching and settled).
+- `Evidence`: `Plain` (for an interaction: what the link means for her, in plain words; for a medicine, result or symptom row: its everyday name) and `AskPlain` (the question in her own words). Rows of kind `name` only give an everyday name to an id that has no row of its own.
+- Two things are linked on the Conditions map when one `interaction` row names both in `Entities`. Rows of kind `symptom_attribution` (lists of possible causes) never make links.
 
 ## Note tags
 

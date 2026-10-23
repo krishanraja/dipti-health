@@ -20,7 +20,7 @@ export function briefText(canon = {}, { doctor = null, today = new Date() } = {}
     mine.forEach((x, i) => L.push(`${i + 1}. ${x.title}${x.why ? ': ' + x.why : ''}`));
     L.push('');
   }
-  const conds = (c.conditions || []).filter(x => x.status !== 'resolved');
+  const conds = (c.conditions || []).filter(x => !/^(resolved|settled)$/.test(x.status));
   if (conds.length) { L.push('CONDITIONS'); conds.forEach(x => L.push(`- ${x.name}${x.evidence === 'Stated' ? ' (as I understand it)' : ''}`)); L.push(''); }
 
   const m = medicines(c);

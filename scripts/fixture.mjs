@@ -18,8 +18,10 @@ export function fixture() {
       { id: 'P3', rank: '3', title: 'Tiredness', status: 'now', why: 'Tired all day, most days.', plan: 'Same bedtime every night\nAsk which medicines add to tiredness\nAsk about an adrenal test before any steroid change', nextStep: 'Ask at the next endocrine visit', askWhom: 'Dr Placeholder (endocrine)', updated: '' },
     ],
     conditions: [
-      { name: 'Example autoimmune condition', status: 'active', since: '2024', evidence: 'Stated', notes: 'Example only', source: 'mock', updated: '' },
-      { name: 'Example liver finding', status: 'active', since: '2026-10-06', evidence: 'Doc', notes: 'Example ultrasound finding', source: 'mock', updated: '' },
+      { name: 'Example autoimmune condition', status: 'long-term', since: '2024', evidence: 'Stated', notes: 'Example only', source: 'mock', updated: '', key: 'COND_EX1', aliases: 'Autoimmune example; liver', plain: 'An invented long-term condition, kept calm with Medicine A.' },
+      { name: 'Example liver finding', status: 'watching', since: '2026-10-06', evidence: 'Doc', notes: 'Example ultrasound finding', source: 'mock', updated: '', key: 'COND_EX2', aliases: 'Liver finding', plain: 'An invented scan finding that is being watched.' },
+      { name: 'Example tooth pain', status: 'watching', since: '2026-09-01', evidence: 'Doc', notes: 'Example dental note', source: 'mock', updated: '', key: 'COND_EX3', aliases: 'Tooth pain; dental', plain: 'Invented pain on biting, being looked into.' },
+      { name: 'Example settled finding', status: 'settled', since: '2025', evidence: 'Doc', notes: 'Back to normal', source: 'mock', updated: '', key: 'COND_EX4', aliases: 'Settled example', plain: 'An invented finding that is back in range.' },
     ],
     medications: [
       { name: 'Medicine A', generic: 'alphazole', dose: '10 mg', timing: 'morning', rx: 'Same', purpose: 'Example', status: 'current', source: 'mock', updated: '' },
@@ -56,8 +58,13 @@ export function fixture() {
       { name: 'Dr Placeholder', role: 'Endocrinologist', owns: 'Steroids, sugar, tiredness', contact: '', lastSeen: '', notes: '' },
     ],
     evidence: [
-      { id: 'MED_A', kind: 'medication', title: 'Medicine A (alphazole)', severity: '', grade: '', appliesWhen: 'both', entities: 'MED_A', text: 'Medicine A (alphazole), example notes.', sources: 'S1' },
-      { id: 'IX01', kind: 'interaction', title: 'Example: steroid cover when unwell', severity: 'critical', grade: 'A', appliesWhen: 'both', entities: 'MED_A', text: 'Example interaction text for testing.', sources: 'S1' },
+      { id: 'MED_A', kind: 'medication', title: 'Medicine A (alphazole)', severity: '', grade: '', appliesWhen: 'both', entities: 'MED_A', text: 'Medicine A (alphazole), example notes.', sources: 'S1', plain: 'Medicine A' },
+      { id: 'MED_B', kind: 'medication', title: 'Medicine B (betamine)', severity: '', grade: '', appliesWhen: 'both', entities: 'MED_B', text: 'Medicine B (betamine), example notes.', sources: 'S1', plain: 'Medicine B' },
+      { id: 'LAB_GGT', kind: 'lab', title: 'GGT', severity: '', grade: 'A', appliesWhen: 'both', entities: 'LAB_GGT', text: 'Example lab notes.', sources: 'S1', plain: 'GGT' },
+      { id: 'MAP_SYM_TIRED', kind: 'symptom_attribution', title: 'What can add to: Tiredness', severity: '', grade: 'E', appliesWhen: 'both', entities: 'SYM_TIRED MED_B', text: 'Example list of causes, never shown.', sources: '', plain: 'Tiredness' },
+      { id: 'MED_OLD', kind: 'name', title: 'Old medicine E (epsilonol)', severity: '', grade: '', appliesWhen: '', entities: 'MED_OLD', text: '', sources: '', plain: 'Old medicine E (stopped)' },
+      { id: 'IX01', kind: 'interaction', title: 'Example: steroid cover when unwell', severity: 'critical', grade: 'A', appliesWhen: 'both', entities: 'MED_A COND_EX1 SYM_TIRED', text: 'Example interaction text for testing.', sources: 'S1', ask: 'Example technical question for the doctor?', plain: 'Medicine A and how tired you feel affect each other (example).', askPlain: 'What should I do with Medicine A when I am unwell?' },
+      { id: 'IX02', kind: 'interaction', title: 'Example: liver tests on Medicine B', severity: 'high', grade: 'B', appliesWhen: 'both', entities: 'MED_B COND_EX1 COND_EX2 LAB_GGT MED_OLD', text: 'Example interaction text two.', sources: 'S1', plain: 'Medicine B is processed by the liver, so liver tests matter (example).', askPlain: 'Is Medicine B still right for my liver?' },
       { id: 'REC_1', kind: 'recommendation', title: 'Example recommendation', severity: '', grade: 'A', appliesWhen: 'both', entities: 'IX01', text: 'Carry a steroid card (example).', sources: 'S1' },
     ],
     sources: [{ id: 'S1', type: 'guideline', grade: 'A', title: 'Example guideline', year: '2024', url: 'https://example.org/guideline' }],
