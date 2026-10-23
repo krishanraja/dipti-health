@@ -4,6 +4,8 @@
 
 ### Done and verified (locally)
 
+- [x] Krish confirmed the name "Steady" and the persona "Dr Ellie". New friendly icon and favicon (D11).
+
 - [x] Scaffolded from `krishanraja/kimon` (Beside). Kimon-only parts were removed: `me.html`, the Dad tab, and the cardiology corpus.
 - [x] Auth.
   - `DIPTI_CODE` opens as `dipti` and `ACCESS_CODE` opens as `family`.
@@ -45,7 +47,6 @@
 ### Disputed or open
 
 - Two conflicts in her dental records (scan date versus upload date, and whether a root canal was done) are recorded as gaps G11 and G12 in her Sheet, not here.
-- The name "Steady" and the persona name "Dr Ellie" are Claude's suggestions, waiting on Krish.
 
 ### Secrets map (where they live, never their values)
 

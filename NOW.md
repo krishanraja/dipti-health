@@ -50,7 +50,7 @@ Results: `npm test` 62/62 and `node scripts/simulate.mjs` 27/27. Screens were ch
 2. Paste `apps-script/Code.gs` into the Sheet's Apps Script, run `setup()` and deploy it as a web app.
 3. Create the Vercel project from this repo and set the environment variables listed in `README.md`, including `OPENAI_API_KEY`.
 4. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.
-5. Confirm or replace: the North Star draft, the name "Steady" and the persona "Dr Ellie".
+5. Confirm or replace the North Star draft. The name "Steady" and the persona "Dr Ellie" are confirmed.
 
 ## Read next
 
