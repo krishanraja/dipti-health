@@ -5,14 +5,14 @@ Owner: Krish Raja
 
 > Draft for Krish: Dipti knows where each of her health priorities stands and what to do next, from her own record, without having to chase a doctor or search late at night.
 >
-> Draft: by 31 January 2027, Dipti uses Steady herself every week, and her tooth, tummy pain and tiredness each have a plan her doctors have confirmed.
+> Draft: by 31 January 2027, Dipti uses Holistic herself every week, and her tooth, tummy pain and tiredness each have a plan her doctors have confirmed.
 
 ## The number (draft)
 
-**Times a week Dipti adds something to Steady herself** (check-ins, logs, notes, chats): 3 by 25 January 2027, on a linear weekly ladder.
+**Times a week Dipti adds something to Holistic herself** (check-ins, logs, notes, chats): 3 by 25 January 2027, on a linear weekly ladder.
 
 ```yaml north-star-metric
-metric: "Times a week Dipti adds something to Steady herself"
+metric: "Times a week Dipti adds something to Holistic herself"
 unit: count
 direction: up
 target: 3
