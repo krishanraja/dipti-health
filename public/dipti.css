@@ -1,4 +1,4 @@
-/* Steady: Dipti's screens on top of the shared Beside design system
+/* Holistic: Dipti's screens on top of the shared Beside design system
    (app.css tokens, sheet, chat). One accent; urgency colours only for flags. */
 
 .today { flex: 1; min-height: 0; display: flex; flex-direction: column; }

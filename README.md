@@ -1,4 +1,4 @@
-# Steady
+# Holistic
 
 Dipti's personal health companion. It runs on her phone and in a fuller desktop overview. Her private Google Sheet is the record: the app reads it and writes to it, and she can open the Sheet herself at any time.
 

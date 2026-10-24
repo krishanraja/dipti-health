@@ -12,6 +12,7 @@ Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 | D25 | A write the Sheet refuses (bad id, bad value) returns 422 and leaves the offline queue with a message; only network or server failures are retried | Claude | A refused write used to retry forever and keep "waiting to save" on screen |
 | D26 | Full chat replies live in a hidden `_Chats` tab. Notes keep the short form only, and reads strip old DATA | Claude | Each chat put up to 40,000 characters into Notes, which every read returned, so reads slowed as chats piled up |
 | D27 | Ellie's read-aloud is removed | Krish | Not needed |
+| D29 | The app is renamed Holistic (was Steady). Check-in results keep the word "Steady" | Krish | Brand strings in `public/index.html` and `manifest.webmanifest`; D9 is replaced |
 | D28 | A fifth tab, Feedback: one tap on a chip, an optional note (typed or spoken), saved to a `Feedback` tab with the screen she came from. The Ask tab is now "Ask Ellie" so five labels fit at 320 px | Krish (the tab), Claude (chips and copy); approved from screenshots | `Status` starts as `new` so Krish can work through them |
 
 ## 2026-10-23 (evening): the fact checker

@@ -1,10 +1,10 @@
 ---
 repo: krishanraja/dipti-health
-product: Steady
+product: Holistic
 as_of: 2026-10-24
 head: see git log
 lifecycle: deployed (production branch claude/magical-mayer-ojpf7z)
-production_url: https://xrds.au (DNS pending; dipti-health.vercel.app works)
+production_url: https://www.xrds.au (xrds.au redirects; dipti-health.vercel.app also works)
 state_doc: README.md
 history_log: docs/DECISIONS.md
 truth_files: [docs/NORTH_STAR.md]
@@ -12,11 +12,11 @@ authority_order: [docs/NORTH_STAR.md, README.md]
 steward: https://github.com/krishanraja/ai-harness/blob/main/docs/steward/RUNBOOK.md
 ---
 
-# Steady: where it is right now
+# Holistic: where it is right now
 
 ## What it is
 
-Steady is Dipti's personal health companion. It is a phone app with a fuller desktop overview. Her private Google Sheet is the record: the app reads it and writes to it, and she can read it directly. It is built on the design system and mission of Beside (`krishanraja/kimon`).
+Holistic is Dipti's personal health companion. It is a phone app with a fuller desktop overview. Her private Google Sheet is the record: the app reads it and writes to it, and she can read it directly. It is built on the design system and mission of Beside (`krishanraja/kimon`).
 
 ## Who it is for
 
@@ -55,9 +55,9 @@ Results: `npm test` 89/89, `node scripts/simulate.mjs` 30/30, and `scripts/noscr
 
 1. Paste the new `apps-script/Code.gs`, run `setup()` (it adds the Feedback, `_Chats` and `_Ops` tabs), and publish a new version of the deployment. Until then the app works through fallbacks, but replays are not de-duplicated and Feedback cannot save.
 2. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.
-3. xrds.au: the .au registry already points at `ns1.vercel-dns.com` and `ns2.vercel-dns.com`, but Vercel has no DNS zone for the domain (`zone: false`), so its name servers refuse every query. In Vercel › Domains › xrds.au, turn on Vercel DNS (your other domains already have it). Until then the app is live at the Vercel URL.
+3. Done 24 Oct: xrds.au is live (Vercel DNS turned on). https://www.xrds.au serves the app and xrds.au redirects to it.
 4. Optional: re-import the rebuilt `Dipti-canon.xlsx` for one label fix ("Weight gain").
-5. Confirm or replace the North Star draft. The name "Steady" and the persona "Dr Ellie" are confirmed.
+5. Confirm or replace the North Star draft. The name "Holistic" (renamed from Steady on 24 Oct) and the persona "Dr Ellie" are confirmed.
 
 ## Read next
 

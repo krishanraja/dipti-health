@@ -1,4 +1,4 @@
-/* Steady design system, v2. Loaded last: it sets the tokens and the shared
+/* Holistic design system, v2. Loaded last: it sets the tokens and the shared
    components every screen uses. Rules of the system:
    - Three surface levels: page (--bg), card (--card), and on-card controls
      (--fill). A control never takes the colour of what it sits on, so it can

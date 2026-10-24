@@ -38,7 +38,7 @@ function render() {
     return;
   }
   root.innerHTML = `<div class="fb">
-    <div class="hello"><p class="kicker">Help make Steady better</p><h1>What's it like to use?</h1></div>
+    <div class="hello"><p class="kicker">Help make Holistic better</p><h1>What's it like to use?</h1></div>
     ${d.chip ? `<div class="fb-picked"><span class="fb-pill">${esc(d.chip)}</span><button type="button" class="btn quiet" data-change>Change</button></div>`
     : `<div class="fb-chips" role="group" aria-label="Pick one">
       ${CHIPS.map(c => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}

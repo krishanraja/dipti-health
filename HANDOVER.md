@@ -9,7 +9,8 @@
 - [x] Feedback tab: `public/js/feedback.js`, `feedback` action, `Feedback` tab.
 - [x] `scripts/noscroll.mjs` walks the link sheet and Feedback (chip, words, sent).
 - [ ] Krish: paste the new Code.gs, run `setup()` (creates Feedback, `_Chats`, `_Ops`), publish a new version.
-- [ ] Krish: xrds.au needs Vercel DNS turned on for the domain (see `NOW.md`).
+- [x] xrds.au: Vercel DNS on, live at www.xrds.au.
+- [x] Renamed Steady to Holistic (D29).
 
 ## 2026-10-23 (evening): fact checker
 

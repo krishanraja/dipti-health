@@ -1,4 +1,4 @@
-// End-to-end simulation of Dipti (and Krish helping) using Steady, against
+// End-to-end simulation of Dipti (and Krish helping) using Holistic, against
 // the real apps-script/Code.gs (run in the emulator) and the real API
 // handlers. Invented data only (scripts/fixture.mjs). Usage: node scripts/simulate.mjs
 //
