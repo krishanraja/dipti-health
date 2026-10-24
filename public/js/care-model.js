@@ -74,3 +74,32 @@ export function todayLine(canon = {}) {
   if (!n) return 'Nothing needs you today. Everything in your record is known and looked after.';
   return `${NUM[n] || n} thing${n === 1 ? ' is' : 's are'} in hand this week. Everything else is known and looked after.`;
 }
+
+// The story so far for one area: what she, her family or her doctors have
+// written about it, newest first, from Notes (however it got there: the app,
+// a long note, or typed straight into the Sheet) and from each condition's
+// own notes. Taps and chat questions are left out: they are not the story.
+const SKIP_TAGS = new Set(['meds-taken', 'concern']);
+const clean = t => String(t || '').split('\nDATA: ')[0].split('\nRID: ')[0].replace(/\nJID: \S+$/, '')
+  .replace(/^(DIPTI SAYS|REPORTED|MEDICINE CHANGE|FACT|SYMPTOM|FOUND OUT):\s*/i, '').trim();
+const who = n => (n.by === 'Dipti' ? 'You' : n.by || 'Someone');
+const KIND = { journal: 'wrote', 'dipti-says': 'noted', 'symptom-log': 'logged', record: 'noted', fact: 'noted', 'found-out': 'found out' };
+
+export function storyFor(canon = {}, areaId) {
+  const a = AREAS.find(x => x.id === areaId);
+  if (!a || areaId === 'everyday') return [];
+  const out = [];
+  for (const n of canon.notes || []) {
+    if (SKIP_TAGS.has(n.tag) || n.by === 'claude-test') continue;
+    const text = clean(n.text);
+    if (text.length < 12 || !a.re.test(text)) continue;
+    out.push({ ts: n.tsUTC || '', title: `${who(n)} ${KIND[n.tag] || 'added'}`, text });
+  }
+  for (const c of canon.conditions || []) {
+    if (areaOf(c).id !== areaId || !c.notes) continue;
+    out.push({ ts: String(c.updated || c.since || ''), title: `About ${String(c.aliases || c.name).split(/\s*;\s*/)[0].toLowerCase()}`, text: String(c.notes) });
+  }
+  // Dates come back from the Sheet in more than one form; compare as time.
+  const t = v => { const d = Date.parse(v); return Number.isNaN(d) ? 0 : d; };
+  return out.sort((x, y) => t(y.ts) - t(x.ts));
+}

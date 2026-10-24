@@ -17,6 +17,8 @@ const QUICK = process.argv.includes('--quick');
 const VIEWPORTS = [
   [320, 568], [360, 640], [375, 667], [390, 844], [430, 932], [568, 320], [844, 390],
   [768, 1024], [1024, 768], [1280, 800], [1440, 900], [1920, 1080],
+  // Laptops with the browser's own bars taking height.
+  [1366, 657], [1440, 760], [1280, 680],
 ].filter((_, i) => !QUICK || [0, 5, 8].includes(i));
 // --only=320x568,844x390 checks just those sizes.
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);

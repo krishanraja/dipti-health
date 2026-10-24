@@ -3,7 +3,8 @@
 // views (On its own, How it connects). Wide screens: list, the condition and
 // its map side by side. Nothing scrolls: lists page, the map sizes to its box.
 import { zoom, linkStory, KINDS, GROUPS } from './conditions-model.js';
-import { careAreas, areaOf } from './care-model.js';
+import { careAreas, areaOf, storyFor } from './care-model.js';
+import { questionsByDoctor } from './record-model.js';
 import { openPriority } from './today.js';
 import { fmtDate, parseDate, cardLabel } from './metrics.js';
 import { pager } from './pager.js';
@@ -103,9 +104,35 @@ function areaBody(a) {
     <div class="area-list"></div>
     ${a.doctor ? `<div class="area-foot"><button class="btn quiet" data-note="${esc(a.doctor)}">Write a note to ${esc(a.doctor)}</button></div>` : ''}`;
 }
+// The area's page: its conditions, the story so far (newest first, a tap
+// shows the whole note), and at most two questions for whoever looks after it.
+function areaItems2(a) {
+  const canon = ctx.canon() || {};
+  const items = a.conditions.map(c => ({ html: `<button class="cond-row" data-c="${esc(c.id)}" ${c.id === sel ? 'aria-current="true"' : ''}><span class="area-t"><b>${esc(c.short)}</b>${c.line ? `<small>${esc(c.line)}</small>` : ''}</span>${tag(c.tag)}</button>` }));
+  const story = storyFor(canon, a.id);
+  if (story.length) {
+    items.push({ html: '<p class="lbl story-h">The story so far</p>', keep: true });
+    story.forEach((x, i) => items.push({ html: `<button class="story-row" data-story="${i}"><span class="story-when">${esc(x.ts ? fmtDate(x.ts, { year: true }) : '')}${x.ts ? ' · ' : ''}${esc(x.title)}</span><span class="story-text">${esc(x.text)}</span></button>` }));
+  }
+  const g = a.doctor ? questionsByDoctor(canon).filter(q => q.who.startsWith(a.doctor) || a.doctor.startsWith(q.who.split(' (')[0])) : [];
+  const qs = g.flatMap(x => x.questions).sort((p, q) => (+p.priority || 9) - (+q.priority || 9)).slice(0, 2);
+  if (qs.length) {
+    items.push({ html: `<p class="lbl story-h">To ask ${esc(a.doctor)}</p>`, keep: true });
+    qs.forEach(q => items.push({ html: `<p class="ask-row">${esc(q.question)}</p>` }));
+  }
+  return { items, story };
+}
 function wireArea(box, a) {
-  pager(box.querySelector('.area-list'), a.conditions.map(c => ({ html: `<button class="cond-row" data-c="${esc(c.id)}" ${c.id === sel ? 'aria-current="true"' : ''}><span class="area-t"><b>${esc(c.short)}</b>${c.line ? `<small>${esc(c.line)}</small>` : ''}</span>${tag(c.tag)}</button>` })), {
-    label: a.label, onRender: b => b.querySelectorAll('[data-c]').forEach(x => x.onclick = () => pick(x.dataset.c)),
+  const { items, story } = areaItems2(a);
+  pager(box.querySelector('.area-list'), items, {
+    label: a.label, onRender: b => {
+      b.querySelectorAll('[data-c]').forEach(x => x.onclick = () => pick(x.dataset.c));
+      b.querySelectorAll('[data-story]').forEach(x => x.onclick = () => {
+        const n = story[+x.dataset.story];
+        ctx.openSheet(`<p class="kicker">${esc(n.ts ? fmtDate(n.ts, { year: true }) + ' · ' : '')}${esc(n.title)}</p><h3 class="sheet-title">${esc(a.label)}</h3><div data-pages="Note">${n.text.split(/(?<=[.!?])\s+(?=[A-Z])/).reduce((acc, t) => { const last = acc[acc.length - 1]; if (last && (last + ' ' + t).length < 260) acc[acc.length - 1] = last + ' ' + t; else acc.push(t); return acc; }, []).map(t => `<p class="story-full">${esc(t)}</p>`).join('')}</div>
+          <button class="btn primary" data-close>Done</button>`);
+      });
+    },
   });
   box.querySelector('[data-prio]')?.addEventListener('click', e => openPriority(e.currentTarget.dataset.prio));
   box.querySelector('[data-note]')?.addEventListener('click', e => {
@@ -150,8 +177,8 @@ function ownItems(z) {
   }
   if (z.questions.length) {
     items.push({ html: `<section class="zsec"><p class="kicker">Questions${z.doctor ? ' for ' + esc(z.doctor.name) : ''}</p>
-      <ol class="plan-steps">${z.questions.slice(0, 3).map(q => `<li>${esc(q.question)}</li>`).join('')}</ol>
-      ${z.questions.length > 3 ? `<button class="link" data-allq>All ${z.questions.length} questions ${CHEV}</button>` : ''}</section>` });
+      <ol class="plan-steps">${z.questions.slice(0, 2).map(q => `<li>${esc(q.question)}</li>`).join('')}</ol>
+      ${z.questions.length > 2 ? `<button class="link" data-allq>More for later ${CHEV}</button>` : ''}</section>` });
   }
   // Long notes page in pieces of a few sentences, so each page fits.
   if (c.notes) {

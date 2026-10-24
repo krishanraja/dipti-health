@@ -82,3 +82,20 @@ test('care areas: every condition in exactly one area; only live priorities are 
   assert.equal(areas.find(a => a.id === 'mind').conditions[0].tag.text, 'Long-term');
   assert.equal(todayLine(c), 'One thing is in hand this week. Everything else is known and looked after.');
 });
+
+test('the story so far: notes about an area, newest first, whatever form the date is in', async () => {
+  const { storyFor } = await import('../public/js/care-model.js');
+  const c = {
+    conditions: [{ key: 'COND_T', name: 'Tooth pain', status: 'watching', notes: 'Scan showed a hairline crack.', updated: 'Fri Oct 23 2026 00:00:00 GMT+0100' }],
+    notes: [
+      { tsUTC: '2026-10-24T08:00:00Z', by: 'Dipti', tag: '', text: 'Root canal started; the tooth still hurts. Suspected non-dental pain.' },
+      { tsUTC: '2026-10-24T09:00:00Z', by: 'Dipti', tag: 'meds-taken', text: 'MEDS: taken, tooth fine' },
+      { tsUTC: '2026-10-22T09:00:00Z', by: 'Dipti', tag: 'concern', text: 'CONCERN: Why does my tooth hurt?' },
+      { tsUTC: '2026-10-20T09:00:00Z', by: 'Krish', tag: 'dipti-says', text: 'DIPTI SAYS: Tummy pain after dinner' },
+    ],
+  };
+  const s = storyFor(c, 'teeth');
+  assert.deepEqual(s.map(x => x.title), ['You added', 'About tooth pain']);
+  assert.match(s[0].text, /^Root canal started/);
+  assert.deepEqual(storyFor(c, 'gut').map(x => x.text), ['Tummy pain after dinner']);
+});
