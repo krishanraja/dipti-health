@@ -139,9 +139,11 @@ function renderZoom(canon) {
 function renderWide(canon, groups) {
   const z = zoom(canon, sel);
   root.innerHTML = `<div class="cdesk">
-    <section class="ccol"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} conditions</h1><p>Pick one to look at it on its own.</p></div><div class="cv-list"></div></section>
-    <section class="ccol">${head(z)}<div class="cv-body"></div><button class="btn primary" data-ask>Ask ${esc(DOCTOR.name)} about this</button></section>
-    <section class="ccol map-col"><div class="cv-map"></div></section>
+    <nav class="ccol cside" aria-label="${you() ? 'Your' : "Dipti's"} conditions"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} conditions</h1><p>Pick one. The rest of the page follows.</p></div><div class="cv-list"></div></nav>
+    <div class="cdetail" aria-live="polite">
+      <section class="ccol">${head(z)}<div class="cv-body"></div><button class="btn primary" data-ask>Ask ${esc(DOCTOR.name)} about this</button></section>
+      <section class="ccol map-col"><div class="cv-map"></div></section>
+    </div>
   </div>`;
   const items = listItems(groups);
   pager(root.querySelector('.cv-list'), items, { onRender: wireList, label: 'Conditions', start: Math.max(0, items.findIndex(i => i.id === sel)) });

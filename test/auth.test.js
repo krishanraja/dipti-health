@@ -52,3 +52,21 @@ test('Dipti is always the author of what she adds; Krish of what he adds', () =>
   assert.equal(auth.byFor('family', 'Krish'), 'Krish');
   assert.equal(auth.byFor('family', ''), 'app');
 });
+test('a session lasts a month, and opening the app renews it', async () => {
+  process.env.ACCESS_CODE = 'Test-Code-9!';
+  const r = fakeRes(); auth.issueCookie(r, 'dipti', 'a');
+  assert.match(r.h['Set-Cookie'], /Max-Age=2592000;/);
+  const { default: handler } = await import('../api/session.js');
+  const out = { ...fakeRes(), code: 0, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
+  handler(cookieFrom(r), out);
+  assert.equal(out.code, 200);
+  assert.match(out.h['Set-Cookie'], /^dipti_session=.+Max-Age=2592000;/);
+  assert.deepEqual(auth.session(cookieFrom(out)), { role: 'dipti', via: 'a' });
+  // An expired session is not renewed.
+  const now = Date.now; Date.now = () => now() + 31 * 864e5;
+  try {
+    const late = { ...fakeRes(), code: 0, status(c) { this.code = c; return this; }, json() { return this; } };
+    handler(cookieFrom(r), late);
+    assert.equal(late.code, 401); assert.equal(late.h['Set-Cookie'], undefined);
+  } finally { Date.now = now; }
+});

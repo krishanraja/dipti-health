@@ -189,7 +189,7 @@ async function conditionsWalk(p, vp, wide) {
         if (await visibleClick(p, '#conds [data-f="all"]')) await check(p, vp, `condition ${id} map, all`);
       }
     } else {
-      await pages(p, vp, `condition ${id}`, '#conds .ccol:nth-child(2)');
+      await pages(p, vp, `condition ${id}`, '#conds .cdetail .ccol:first-child');
       if (await visibleClick(p, '#conds .mn')) await check(p, vp, `condition ${id}, a dot tapped`);
     }
   }

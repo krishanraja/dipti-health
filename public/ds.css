@@ -243,3 +243,55 @@
 .fb-tick { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; }
 .fb-tick svg { width: 28px; height: 28px; fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-height: 500px) { .fb { gap: 8px; } .fb-chips { grid-template-columns: repeat(3, 1fr); gap: 6px; } .fb-chips button { min-height: 40px; padding: 6px 10px; font-size: 14px; } .fb-more textarea { min-height: 48px; } }
+
+/* ---------- wide Conditions: the list leads, the detail follows ---------- */
+.cdesk { grid-template-columns: minmax(300px, .8fr) 2.3fr; gap: 0; align-items: stretch; }
+.cside {
+  background: var(--fill); border-radius: var(--r-lg, 22px) 0 0 var(--r-lg, 22px);
+  padding: 18px 0 14px 14px; gap: 14px; position: relative; z-index: 1;
+}
+.cside .hello { padding: 0 14px 0 6px; }
+.cside .hello h1 { font-size: 24px; }
+.cside .hello p { font-size: 14px; }
+.cside .pg-foot { padding-right: 14px; }
+.cside .kicker { padding: 8px 8px 2px; }
+.cside .crow {
+  background: transparent; box-shadow: none; border-radius: 14px 0 0 14px;
+  padding: 11px 18px 11px 14px; margin-right: 0; position: relative; transition: background .2s, color .2s;
+}
+.cside .crow:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.cside .crow:active { transform: none; }
+.cside .crow .crow-top b { font-weight: 600; }
+/* The chosen one becomes part of the detail panel: same surface, joined edge. */
+.cside .crow[aria-current="true"] {
+  background: var(--raised, var(--card)); box-shadow: none;
+}
+.cside .crow[aria-current="true"]::before {
+  content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 4px; border-radius: 0 4px 4px 0; background: var(--accent);
+}
+.cside .crow[aria-current="true"] .crow-top b { color: var(--accent); }
+/* Inverted corners where the chosen row meets the panel. */
+.cside .crow[aria-current="true"]::after {
+  content: ""; position: absolute; right: 0; top: -14px; bottom: -14px; width: 14px; pointer-events: none;
+  background:
+    radial-gradient(circle at 0 0, transparent 13.5px, var(--raised, var(--card)) 14px) top / 14px 14px no-repeat,
+    radial-gradient(circle at 0 100%, transparent 13.5px, var(--raised, var(--card)) 14px) bottom / 14px 14px no-repeat;
+}
+.cdetail {
+  min-height: 0; display: grid; grid-template-columns: 1.1fr 1.15fr; gap: 20px;
+  background: var(--raised, var(--card)); border-radius: 0 var(--r-lg, 22px) var(--r-lg, 22px) 0;
+  padding: 18px 20px; box-shadow: var(--shadow);
+  animation: cdIn .28s cubic-bezier(.2, .7, .3, 1);
+}
+.cdetail .zsec, .cdetail .map-sec { background: var(--fill); box-shadow: none; }
+.cdetail .map-col .cv-map > * { background: transparent; }
+@keyframes cdIn { from { opacity: .35; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cdetail { animation: none; } }
+.tt, .sync span, .sheet-link span { white-space: nowrap; }
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .tt { padding: 0 12px; }
+  .sheet-link span { display: none; }
+  .cdesk { grid-template-columns: minmax(250px, .62fr) 2.3fr; }
+  .cdetail { grid-template-columns: 1fr 1.2fr; gap: 16px; padding: 16px; }
+  .cside .crow-plain { display: none; }
+}

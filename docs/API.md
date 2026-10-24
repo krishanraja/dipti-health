@@ -4,7 +4,7 @@
 
 - `POST /api/login {code, persona?}`
   - Checks `DIPTI_CODE` (opens as `dipti`) or `ACCESS_CODE` (opens as `family`). Both are case-insensitive.
-  - Sets `dipti_session` (HttpOnly, Secure, 1 year).
+  - Sets `dipti_session` (HttpOnly, Secure, 30 days). Each `GET /api/session` (every app open) renews the 30 days.
   - Returns `{role, askWho, people}`.
   - `POST /api/login {persona: 'dipti'|'family'}` switches a logged-in device. `DELETE /api/login` logs out.
 - `GET /api/session` returns `{authed, role, sheetConfigured, ai, people}`, or 401 when not logged in.
