@@ -39,10 +39,14 @@ COLS = {
     'Sources': ['id', 'type', 'grade', 'title', 'year', 'url'],
     'Notes': ['tsUTC', 'by', 'text', 'tag'],
     'Changelog': ['ts', 'tab', 'key', 'old', 'new', 'by', 'source'],
+    'Feedback': ['ts', 'by', 'chip', 'text', 'screen', 'status'],
+    '_Chats': ['rid', 'ts', 'by', 'threadId', 'data'],
+    '_Ops': ['opId', 'ts', 'action', 'result'],
 }
 CANON_KEY = {'Priorities': 'priorities', 'Appointments': 'appointments', 'Conditions': 'conditions', 'Medications': 'medications', 'TestResults': 'testResults',
              'CheckIns': 'checkins', 'Questions': 'questions', 'KnowledgeGaps': 'gaps', 'Clinicians': 'clinicians',
-             'Evidence': 'evidence', 'Sources': 'sources', 'Notes': 'notes', 'Changelog': 'changelog'}
+             'Evidence': 'evidence', 'Sources': 'sources', 'Notes': 'notes', 'Changelog': 'changelog',
+             'Feedback': 'feedback', '_Chats': '_chats', '_Ops': '_ops'}
 
 
 def build(record, kb_dir, plain):

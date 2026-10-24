@@ -188,6 +188,36 @@
         "By",
         "Source"
       ]
+    },
+    "Feedback": {
+      "mode": "append",
+      "headers": [
+        "TimestampUTC",
+        "By",
+        "Chip",
+        "Text",
+        "Screen",
+        "Status"
+      ]
+    },
+    "_Chats": {
+      "mode": "append",
+      "headers": [
+        "Rid",
+        "TimestampUTC",
+        "By",
+        "ThreadId",
+        "Data"
+      ]
+    },
+    "_Ops": {
+      "mode": "append",
+      "headers": [
+        "OpId",
+        "TimestampUTC",
+        "Action",
+        "Result"
+      ]
     }
   }
 }

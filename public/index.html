@@ -59,6 +59,7 @@
       <button class="tt" data-go="record">Record</button>
       <button class="tt" data-go="conditions">Conditions</button>
       <button class="tt" data-go="ask" data-ask-label>Ask</button>
+      <button class="tt" data-go="feedback">Feedback</button>
     </nav>
     <span class="top-right">
       <a id="sheetLink" class="sheet-link" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg><span>My Sheet</span></a>
@@ -88,6 +89,11 @@
     <section class="view chat-view" id="view-ask" data-view="ask" hidden>
       <div class="chat" id="chat"></div>
     </section>
+
+    <!-- FEEDBACK -->
+    <section class="view" id="view-feedback" data-view="feedback" hidden>
+      <div class="fbwrap" id="fb"></div>
+    </section>
   </div>
 
   <nav class="nav" aria-label="Sections">
@@ -99,6 +105,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="18" r="2"/><path d="M7 7l3 3M17 7l-3 3M8 17.5l2.2-3.3M16.5 16.5l-2.3-2.4"/></svg><span>Conditions</span></button>
     <button class="nav-btn" data-go="ask">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg><span data-ask-label>Ask</span></button>
+    <button class="nav-btn" data-go="feedback">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/></svg><span>Feedback</span></button>
   </nav>
 </main>
 

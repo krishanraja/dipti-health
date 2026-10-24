@@ -26,7 +26,6 @@ const ICON = {
   stop: '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>',
   x: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   compose: '<svg viewBox="0 0 24 24"><path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6"/><path d="M17.5 3.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>',
-  speaker: '<svg viewBox="0 0 24 24"><path d="M5 9h3l4-4v14l-4-4H5z"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
 };
 
 let ctx, el, head, chat, recording = null, asking = false;
@@ -165,11 +164,10 @@ function leffyBody(m) {
     </div>
     ${a.results?.length ? resultsCard(m) : ''}
     ${a.updates?.length ? updatesCard(m) : ''}
-    ${m.answer ? `<div class="bmeta">
+    ${m.answer && (a.watchFor?.length || a.askTheDoctor?.length || a.evidence?.length || a.limits) ? `<div class="bmeta">
       ${a.watchFor?.length ? '<button data-more="watch">Watch for</button>' : ''}
       ${a.askTheDoctor?.length ? '<button data-more="doctor">Ask the doctor</button>' : ''}
       ${a.evidence?.length || a.limits ? '<button data-more="src">Sources</button>' : ''}
-      <button data-say aria-label="Read aloud">${ICON.speaker}</button>
     </div><div class="bmore" hidden></div>` : ''}`;
 }
 
@@ -262,7 +260,6 @@ function wireMsg(n) {
   const m = chat.msgs.find(x => x.id === n.dataset.id);
   if (!m) return;
   n.querySelector('[data-retry]')?.addEventListener('click', () => retry(m));
-  n.querySelector('[data-say]')?.addEventListener('click', () => say(m.answer.reply));
   n.querySelectorAll('[data-upd-yes]').forEach(b => b.onclick = () => answerUpdate(m, +b.dataset.updYes, true));
   n.querySelectorAll('[data-upd-no]').forEach(b => b.onclick = () => answerUpdate(m, +b.dataset.updNo, false));
   n.querySelectorAll('[data-more]').forEach(b => b.onclick = () => {
@@ -581,19 +578,6 @@ async function addQuestions(qs, btn) {
   btn.textContent = ok ? 'Added to the record ✓' : 'Will save when online';
   ctx.reload?.();
 }
-
-/* ---------- read aloud ---------- */
-function say(text) {
-  if (!('speechSynthesis' in window)) { ctx.toast('Reading aloud is not available here'); return; }
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; u.rate = .98;
-  u.onstart = () => { head.speak(); status('Talking'); };
-  u.onboundary = () => head.speak();
-  u.onend = u.onerror = () => { head.done(); status(); };
-  speechSynthesis.speak(u);
-  head.speak();
-}
-export function stopSpeaking() { try { speechSynthesis.cancel(); } catch { /* none */ } }
 
 /* ---------- what the doctor knows ---------- */
 function bankSheet() {

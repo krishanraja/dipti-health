@@ -132,6 +132,8 @@ async function phoneRun(p, vp) {
   await pages(p, vp, 'conditions list');
   await conditionsWalk(p, vp, false);
   await nav('ask'); await check(p, vp, 'ask');
+  await feedbackWalk(p, vp, nav);
+  await nav('today');
   await layers(p, vp);
 }
 // The confirm card Ellie shows when she hears a fact has changed.
@@ -179,7 +181,11 @@ async function conditionsWalk(p, vp, wide) {
       await pages(p, vp, `condition ${id} on its own`, '#conds');
       if (await visibleClick(p, '#conds [data-tab="map"]')) {
         await check(p, vp, `condition ${id} map`);
-        if (await visibleClick(p, '#conds .mn')) await check(p, vp, `condition ${id} map, a dot tapped`);
+        if (await visibleClick(p, '#conds .mn')) {
+          await check(p, vp, `condition ${id} link sheet`);
+          if (await visibleClick(p, '.ls-nav [data-next]')) await check(p, vp, `condition ${id} link sheet, next`);
+          await closeLayer(p);
+        }
         if (await visibleClick(p, '#conds [data-f="all"]')) await check(p, vp, `condition ${id} map, all`);
       }
     } else {
@@ -187,6 +193,20 @@ async function conditionsWalk(p, vp, wide) {
       if (await visibleClick(p, '#conds .mn')) await check(p, vp, `condition ${id}, a dot tapped`);
     }
   }
+}
+
+// Feedback: a chip, some words, then sent.
+async function feedbackWalk(p, vp, go) {
+  if (!(await go('feedback'))) { failures.push(`${vp.join('x')} no Feedback tab`); return; }
+  await check(p, vp, 'feedback');
+  if (!(await visibleClick(p, '#fb [data-chip]'))) { failures.push(`${vp.join('x')} feedback chip not tappable`); return; }
+  await check(p, vp, 'feedback: chip picked');
+  await p.fill('#fbText', 'The map was hard to read on my phone. '.repeat(6));
+  await check(p, vp, 'feedback: written');
+  if (!(await visibleClick(p, '#fb [data-send]'))) { failures.push(`${vp.join('x')} feedback send not tappable`); return; }
+  await p.waitForSelector('#fb [data-again]', { timeout: 10000 }).catch(() => failures.push(`${vp.join('x')} feedback did not reach sent`));
+  await check(p, vp, 'feedback: sent');
+  await visibleClick(p, '#fb [data-again]');
 }
 
 async function layers(p, vp) {
@@ -215,6 +235,8 @@ async function wideRun(p, vp) {
   await tab('conditions'); await check(p, vp, 'conditions');
   await conditionsWalk(p, vp, true);
   await tab('ask'); await check(p, vp, 'ask');
+  await feedbackWalk(p, vp, tab);
+  await tab('today');
   await layers(p, vp);
 }
 

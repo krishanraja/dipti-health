@@ -3,10 +3,11 @@ import { mountRecord, refreshRecord, recordHome, recordSpoke, openSheet } from '
 import { resultsText } from '/js/speech.js';
 import { canRecord, startRecording, transcribeBlob } from '/js/recorder.js';
 import { mountConditions, refreshConditions, conditionsHome, openCondition } from '/js/conditions.js';
-import { mountChat, refreshChat, sendToChat, checkPending, stopSpeaking, photoToChat, showChat } from '/js/chat.js';
+import { mountChat, refreshChat, sendToChat, checkPending, photoToChat, showChat } from '/js/chat.js';
 import { person, matchPerson } from '/js/people.js';
 import { briefText } from '/js/brief.js';
 import { DOCTOR } from '/js/persona.js';
+import { mountFeedback, feedbackFrom } from '/js/feedback.js';
 
 /* ---------------- tiny helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -80,14 +81,20 @@ async function loadCanon() {
   }
 }
 
-// Writes never get lost: failures wait in a queue and retry next time.
+// Writes never get lost: failures wait in a queue and retry next time. Each
+// write carries one id for all its retries, so the Sheet applies it once even
+// if a reply was lost after it saved. A write the Sheet refuses on its
+// content (422) is not retried: it can never succeed, so it would block.
+const opId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 async function save(action, payload) {
+  const item = { action, payload, by: who(), ts: Date.now(), opId: opId() };
   try {
-    const out = await api('/api/write', { method: 'POST', body: { action, payload, by: who() } });
+    const out = await api('/api/write', { method: 'POST', body: item, timeout: 30000 });
     return { ok: true, out };
   } catch (e) {
     if (e.status === 401) return { ok: false };
-    const q = store.get('queue', []); q.push({ action, payload, by: who(), ts: Date.now() }); store.set('queue', q);
+    if (e.status === 422) { toast(`Couldn't save that: ${String(e.message).replace(/^sheet API: /, '')}`, 4500); return { ok: false, rejected: true }; }
+    const q = store.get('queue', []); q.push(item); store.set('queue', q);
     setSync('warn', `${q.length} waiting to save`);
     return { ok: false, queued: true };
   }
@@ -98,15 +105,23 @@ async function addNote(tag, text) {
   return save('note', { text, tag });
 }
 
-async function flushQueue() {
-  const q = store.get('queue', []);
-  if (!q.length || !session.sheetConfigured) return;
-  const left = [];
-  for (const item of q) {
-    try { await api('/api/write', { method: 'POST', body: item }); } catch (e) { left.push(item); }
-  }
-  store.set('queue', left);
-  if (!left.length) toast('Saved everything that was waiting');
+let flushing = null;
+function flushQueue() {
+  // One flush at a time: "online", a tap on the status and start-up can overlap.
+  flushing ||= (async () => {
+    const q = store.get('queue', []);
+    if (!q.length || !session.sheetConfigured) return;
+    const left = [], refused = [];
+    for (const item of q) {
+      item.opId ||= opId(); // items queued by an older version
+      try { await api('/api/write', { method: 'POST', body: item, timeout: 30000 }); }
+      catch (e) { if (e.status === 422) refused.push(item); else left.push(item); }
+    }
+    store.set('queue', left);
+    if (refused.length) toast(`${refused.length} change${refused.length === 1 ? '' : 's'} could not be saved: the Sheet refused ${refused.length === 1 ? 'it' : 'them'}.`, 5000);
+    else if (!left.length) toast('Saved everything that was waiting');
+  })().finally(() => { flushing = null; });
+  return flushing;
 }
 addEventListener('online', () => flushQueue().then(loadCanon));
 $('#sync').addEventListener('click', () => {
@@ -188,9 +203,9 @@ async function boot() {
   }
   store.set('role', session.role);
   document.body.classList.toggle('as-family', !me().dipti);
-  document.querySelectorAll('[data-ask-label]').forEach(s => { s.textContent = `Ask ${DOCTOR.name}`; });
+  document.querySelectorAll('[data-ask-label]').forEach(s => { s.textContent = `Ask ${DOCTOR.first}`; });
   $('#login').hidden = true; $('#app').hidden = false;
-  buildToday(); buildRecord(); buildConditions(); buildChat();
+  buildToday(); buildRecord(); buildConditions(); buildChat(); mountFeedback($('#fb'), ctx());
   go(store.get('view', 'today'));
   await flushQueue();
   loadCanon();
@@ -204,11 +219,12 @@ document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', 
   go(b.dataset.go);
 }));
 function go(name) {
-  if (!['today', 'record', 'conditions', 'ask'].includes(name)) name = 'today';
+  if (!['today', 'record', 'conditions', 'ask', 'feedback'].includes(name)) name = 'today';
+  if (name === 'feedback') feedbackFrom(store.get('view', 'today'));
   store.set('view', name);
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== name; });
   document.querySelectorAll('[data-go]').forEach(b => { if (b.dataset.go === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  if (name !== 'ask') stopSpeaking(); else showChat();
+  if (name === 'ask') showChat();
   requestAnimationFrame(fitAll);
 }
 

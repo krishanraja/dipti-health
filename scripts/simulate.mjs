@@ -60,7 +60,7 @@ async function device(code, persona) {
     if (p === '/api/ask') return (await res.text()).trim().split('\n').map(l => JSON.parse(l));
     return { status: res.status, ...(await res.json()) };
   };
-  return { login: j, call, write: (action, payload, by) => call('/api/write', { action, payload, by }) };
+  return { login: j, call, write: (action, payload, by, opId) => call('/api/write', { action, payload, by, opId }) };
 }
 
 const wrong = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: 'dipti' }) });
@@ -126,6 +126,13 @@ factOuts.push(await dip.write('check', { tab: 'Medications', key: 'Supplement D'
 const apptAdd = await dip.write('appointment', { date: '2026-11-02', time: '10:30', with: 'Dr Example (dentist)', for: 'Tooth' }, 'Dipti');
 factOuts.push(apptAdd, await dip.write('appointment', { id: apptAdd.id, status: 'done', checked: true }, 'Dipti'));
 
+// A phone that lost the reply sends the same write again; a bad write is refused.
+const replay1 = await dip.write('note', { text: 'Replayed note', tag: 'note' }, 'Dipti', 'sim-op-1');
+const replay2 = await dip.write('note', { text: 'Replayed note', tag: 'note' }, 'Dipti', 'sim-op-1');
+sent.push(['Dipti', 'note', 'Replayed note']); // expected exactly once
+const refused = await dip.write('priority', { id: 'P9', status: 'done' }, 'Dipti', 'sim-op-2');
+const fb = await dip.write('feedback', { chip: 'Too much to read', text: 'Example feedback', screen: 'today' }, 'Dipti', 'sim-op-3');
+
 /* ---------- 3. read the sheet back ---------- */
 const tabs = await (await fetch(SHEET + '/__tabs')).json();
 const canon = await dip.call('/api/canon');
@@ -185,7 +192,9 @@ check('Questions, gaps, medicines and doctors: changed by Krish and audited', ()
 check('Chat: each message logged once with its reply; devices get the slim copy', () => {
   const concerns = newRows('Notes').filter(r => r[3] === 'concern');
   assert.equal(concerns.length, 5);
-  assert.ok(concerns.every(r => /\nRID: simrid\d\nDATA: \{/.test(r[2])));
+  assert.ok(concerns.every(r => /\nRID: simrid\d$/.test(r[2])), 'Notes keep the short form');
+  const chats = newRows('_Chats');
+  assert.deepEqual(chats.map(r => r[0]), concerns.map(r => r[2].match(/RID: (\w+)$/)[1]), 'full reply data is in _Chats');
   assert.deepEqual(concerns.map(r => r[1]), ['Dipti', 'Dipti', 'Krish', 'Dipti', 'Dipti']);
   assert.ok(canon.notes.filter(n => n.tag === 'concern').every(n => !/DATA:/.test(n.text)));
 });
@@ -221,6 +230,17 @@ check('Fact checker: Ellie proposes the change, and only the confirmed write rea
   for (const k of ['Medicine A.status|Dipti', 'Supplement D.checked|Dipti', `${apptAdd.id}.status|Dipti`]) assert.ok(ch.includes(k), 'missing ' + k);
   const due = factsDue(canon).map(f => f.key);
   assert.ok(!due.includes('Medicine A') && !due.includes('Supplement D'));
+});
+
+check('Writes: a replayed write is applied once; a refused one is a 422, so the phone stops retrying', () => {
+  assert.equal(replay1.ok, true); assert.equal(replay2.duplicate, true);
+  assert.equal(canon.notes.filter(n => n.text === 'Replayed note').length, 1);
+  assert.equal(refused.status, 422, JSON.stringify(refused)); assert.equal(refused.rejected, true);
+});
+check('Feedback: saved to its own tab with the screen it came from', () => {
+  assert.equal(fb.ok, true);
+  const rows = newRows('Feedback');
+  assert.deepEqual([rows[0][1], rows[0][2], rows[0][4], rows[0][5]], ['Dipti', 'Too much to read', 'today', 'new']);
 });
 
 /* ---------- 4. the knowledge bank, context and summaries ---------- */

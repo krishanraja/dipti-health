@@ -9,7 +9,7 @@
   - `POST /api/login {persona: 'dipti'|'family'}` switches a logged-in device. `DELETE /api/login` logs out.
 - `GET /api/session` returns `{authed, role, sheetConfigured, ai, people}`, or 401 when not logged in.
 - `GET /api/canon` returns the whole Sheet in the shape below. Chat notes come without their stored DATA.
-- `POST /api/write {action, payload, by}` proxies one Sheet write. A Dipti session is always written as "Dipti".
+- `POST /api/write {action, payload, by, opId}` proxies one Sheet write. A Dipti session is always written as "Dipti". `opId` is made once per write and kept across retries. Returns 422 `{rejected: true}` when the Sheet refuses the content (do not retry) and 502 when the Sheet cannot be reached (retry later).
 - `POST /api/ask {message, thread[{role, text}], threadId, rid, by, image?{data, type}}` streams NDJSON:
   - `stage`, then `delta` events with the reply text, then one `answer`, then `learned`.
   - `answer` is `{urgency, reply, doNow[], watchFor[], askTheDoctor[], evidence[{point, ref, title, url, grade}], usedFromRecord[], replies[], learned[], results[], limits}`.
@@ -25,7 +25,8 @@
 Endpoints:
 
 - `GET ?secret=..&action=ping|read`
-- `POST` (`Content-Type: text/plain`) `{secret, action, by, payload}`. Actions:
+- `GET ?secret=..&action=answer&rid=` returns `{ok, data}` for one saved chat reply (`_Chats` first, then old Notes DATA).
+- `POST` (`Content-Type: text/plain`) `{secret, action, by, payload, opId?}`. Every POST runs under a script lock. With an `opId` already in `_Ops`, the stored result comes back with `duplicate: true` and nothing is written again. Actions:
   - `checkin {answers:{tooth 0-10, abdomen 0-10, fatigue 0-10, sleep good|ok|poor, bowels normal|loose|diarrhoea|constipated, mood ok|low|very-low}, notes?}`. Returns a verdict: `Steady`, `Changed` or `Act-today`. `Act-today` means diarrhoea (steroid sick-day rules) or pain of 9 or more.
   - `note {text, tag?}`
   - `testResult {date, test, result, range?, lab?, notes?}`
@@ -39,6 +40,10 @@ Endpoints:
   - `profile {key, value}`
   - `condition {name, status long-term|watching|settled?, notes?, since?, evidence?, aliases?, plain?}`
   - `medication {name, generic?, dose?, timing?, rx?, purpose?, status current|stopped|check?}`
+  - `feedback {chip, text?, screen?}`: one row in `Feedback` (`TimestampUTC, By, Chip, Text, Screen, Status`), status `new`.
+  - `chat {rid, threadId?, text, data}`: server only (`/api/ask`). Full data to `_Chats` (`Rid, TimestampUTC, By, ThreadId, Data`); a short concern row to Notes.
+
+Hidden tabs: `_Ops` (`OpId, TimestampUTC, Action, Result`, last 2,000 kept) and `_Chats`. Neither is returned by `read`.
 
 Every edit to an overwrite tab is written to `Changelog` with who made it.
 

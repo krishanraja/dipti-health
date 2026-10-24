@@ -1,5 +1,16 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-10-24: map on phones, Sheet integrity, Feedback
+
+- [x] Conditions map rewritten as two columns (`mapSvg`, `linkSheet` in `public/js/conditions.js`; styles at the end of `public/ds.css`).
+- [x] Idempotent, locked writes: `opId` from `public/app.js` `save()` through `api/write.js` and `lib/sheet.js` to `doPost` in Code.gs (`_Ops`, `findOp`, `recordOp`). 422 for refused writes. Tests: `test/sheet.test.js`; simulation covers a replay and a refusal.
+- [x] Chat storage: `chat` action writes `_Chats` plus a short Notes row; `GET ?action=answer&rid=` serves `/api/answer`. Older Code.gs still works through fallbacks in `api/ask.js` and `api/answer.js`.
+- [x] Read-aloud removed from `public/js/chat.js` and `public/app.js`.
+- [x] Feedback tab: `public/js/feedback.js`, `feedback` action, `Feedback` tab.
+- [x] `scripts/noscroll.mjs` walks the link sheet and Feedback (chip, words, sent).
+- [ ] Krish: paste the new Code.gs, run `setup()` (creates Feedback, `_Chats`, `_Ops`), publish a new version.
+- [ ] Krish: xrds.au needs Vercel DNS turned on for the domain (see `NOW.md`).
+
 ## 2026-10-23 (evening): fact checker
 
 - [x] `public/js/facts-model.js` (what is due, in what order, and the writes for each answer). Tests: `test/facts-model.test.js`.

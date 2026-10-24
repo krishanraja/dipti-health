@@ -270,11 +270,17 @@ export default async function handler(req, res) {
     let saved = false;
     if (canon) {
       try {
-        // Full reply kept with its request id, so a dropped connection can recover it.
-        await write('note', {
-          text: `CONCERN: ${image ? '[photo] ' : ''}${message}\nURGENCY: ${answer.urgency}\nANSWER: ${answer.reply}\nRID: ${rid}\nDATA: ${JSON.stringify({ answer, source, threadId })}`.slice(0, 40000),
-          tag: 'concern',
-        }, by, { timeoutMs: 10000 });
+        // A short row in Notes, the full reply in _Chats (by request id, so a
+        // dropped connection can recover it). The rid makes a retry a no-op.
+        const summary = `CONCERN: ${image ? '[photo] ' : ''}${message}\nURGENCY: ${answer.urgency}\nANSWER: ${answer.reply}\nRID: ${rid}`;
+        const data = JSON.stringify({ answer, source, threadId });
+        try {
+          await write('chat', { rid, threadId, text: summary.slice(0, 5000), data }, by, { timeoutMs: 10000, opId: `chat-${rid}` });
+        } catch (e) {
+          if (!/unknown action/.test(e.message)) throw e;
+          // An older Code.gs: the single-row form it understands.
+          await write('note', { text: `${summary}\nDATA: ${data}`.slice(0, 40000), tag: 'concern' }, by, { timeoutMs: 10000, opId: `chat-${rid}` });
+        }
         saved = true;
       } catch { /* reply still returned; the phone shows not-saved */ }
     }
@@ -283,8 +289,8 @@ export default async function handler(req, res) {
     // Grow the knowledge bank after the reply is on screen.
     if (canon && learned.length) {
       let n = 0;
-      for (const f of learned) {
-        try { await write('note', factNote(f, image ? 'photo' : 'chat'), by, { timeoutMs: 10000 }); n++; } catch { /* keep going */ }
+      for (const [i, f] of learned.entries()) {
+        try { await write('note', factNote(f, image ? 'photo' : 'chat'), by, { timeoutMs: 10000, opId: `fact-${rid}-${i}` }); n++; } catch { /* keep going */ }
       }
       send({ type: 'learned', facts: learned, saved: n });
     }

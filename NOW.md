@@ -1,7 +1,7 @@
 ---
 repo: krishanraja/dipti-health
 product: Steady
-as_of: 2026-10-23
+as_of: 2026-10-24
 head: see git log
 lifecycle: deployed (production branch claude/magical-mayer-ojpf7z)
 production_url: https://xrds.au (DNS pending; dipti-health.vercel.app works)
@@ -29,9 +29,9 @@ North Star: **proposed, not set** (see `docs/NORTH_STAR.md`). Current value: 0, 
 
 What is built and verified locally:
 
-- Phone app: Today, Record, Conditions and Ask Dr Ellie.
+- Phone app: Today, Record, Conditions, Ask Ellie and Feedback.
 - Desktop overview at 1024 px and wider.
-- Apps Script data layer with 14 tabs.
+- Apps Script data layer with 18 tabs, two of them hidden (`_Ops`, `_Chats`). Writes apply once and run under a lock (D24).
 - Red-flag rules.
 - Proportion rules.
 - Research pack retrieval.
@@ -42,19 +42,21 @@ What is built and verified locally:
 - Fact checker (D18 to D21): a few "still right?" checks a day, an Appointments tab, and Ellie proposing Sheet updates that Dipti confirms. Every confirm or correction is a row in the Changelog with By = Dipti, which is how the North Star gets measured.
 - No scrolling anywhere except the chat thread (D14). `scripts/noscroll.mjs` checks every screen, list page, sheet, panel and flow at 12 sizes (320×568 to 1920×1080, portrait and landscape), with her real record loaded locally only.
 
-Results: `npm test` 83/83, `node scripts/simulate.mjs` 28/28, and `scripts/noscroll.mjs` clean at all 12 sizes on her real record (about 1,200 screens, both logins), plus the invented fixture and an empty record.
+Results: `npm test` 89/89, `node scripts/simulate.mjs` 30/30, and `scripts/noscroll.mjs` clean at all 12 sizes on her real record (about 1,200 screens, both logins), plus the invented fixture and an empty record.
 
 ## What changed recently
 
 - 23 Oct 2026: first build. See `docs/DECISIONS.md` (D1–D11).
 - 23 Oct 2026 (later): Conditions tab, no-scroll on every device, header-based Sheet columns (D12–D17). Deployed to Vercel; xrds.au is attached but its DNS is not working yet.
 - 23 Oct 2026 (evening): fact checker and Appointments (D18–D21).
+- 24 Oct 2026: design system v2, a two-column Conditions map with a detail sheet on phones, writes that apply once and never pile up, read-aloud removed, and a Feedback tab (D22–D28).
 
 ## What is next and waiting on Krish
 
-1. Re-import the rebuilt `Dipti-canon.xlsx` (it adds the Conditions and research-pack plain-language columns), paste the new `apps-script/Code.gs`, run `setup()`, and publish a new version of the deployment.
+1. Paste the new `apps-script/Code.gs`, run `setup()` (it adds the Feedback, `_Chats` and `_Ops` tabs), and publish a new version of the deployment. Until then the app works through fallbacks, but replays are not de-duplicated and Feedback cannot save.
 2. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.
-3. Fix the xrds.au DNS. The .au registry delegates the domain to name servers that refuse to answer for it (a lame delegation), so the site cannot load there yet. At the registrar, set the name servers to `ns1.vercel-dns.com` and `ns2.vercel-dns.com`. Until then the app is live at the Vercel URL.
+3. xrds.au: the .au registry already points at `ns1.vercel-dns.com` and `ns2.vercel-dns.com`, but Vercel has no DNS zone for the domain (`zone: false`), so its name servers refuse every query. In Vercel › Domains › xrds.au, turn on Vercel DNS (your other domains already have it). Until then the app is live at the Vercel URL.
+4. Optional: re-import the rebuilt `Dipti-canon.xlsx` for one label fix ("Weight gain").
 5. Confirm or replace the North Star draft. The name "Steady" and the persona "Dr Ellie" are confirmed.
 
 ## Read next

@@ -46,6 +46,7 @@ class Sheet {
   constructor(name, headers) { this.name = name; this.rows = headers ? [headers.slice()] : []; this.width = headers ? headers.length : 0; }
   getLastRow() { return this.rows.length; }
   setFrozenRows() { return this; }
+  deleteRows(start, n) { this.rows.splice(start - 1, n); return this; }
   getLastColumn() { return this.width; }
   getRange(r, c, nr, nc) { return new Range(this, r, c, nr, nc); }
   getDataRange() { return new Range(this, 1, 1, this.rows.length, this.width); }
@@ -53,11 +54,13 @@ class Sheet {
 }
 
 export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null } = {}) {
-  const tabs = {}, props = { APP_SECRET: secret }, logs = [];
+  const tabs = {}, props = { APP_SECRET: secret }, logs = [], locks = { released: 0 };
   const ctx = {
     SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, insertSheet: n => (tabs[n] = new Sheet(n, null)), getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit' }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     Logger: { log: m => logs.push(String(m)) },
+    // Writes are serial in the emulator; the lock only has to exist.
+    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() { locks.released++; } }) },
     ContentService: {
       MimeType: { JSON: 'application/json' },
       createTextOutput: text => ({ text, setMimeType() { return this; }, getContent() { return this.text; } }),
@@ -82,7 +85,7 @@ export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null
   if (seed) seedTabs(tabs, seed, vm.runInContext('TABS', ctx));
 
   return {
-    tabs, logs,
+    tabs, logs, locks,
     setup: () => ctx.setup(),
     get: params => JSON.parse(ctx.doGet({ parameter: params }).getContent()),
     post: body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent()),

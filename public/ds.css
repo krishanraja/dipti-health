@@ -174,3 +174,72 @@
   .sheet-foot .row > .btn, .sheet > .row > .btn { min-height: 40px; font-size: 15px; }
   .sheet .sheet-title { font-size: 18px; }
 }
+
+/* ---------- How it connects: the two-column map ---------- */
+.map-sec { grid-template-areas: "chips" "map" "hint"; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; }
+.map-sec.wide { grid-template-areas: "chips" "map" "card"; }
+.map-sec > .map-hint { grid-area: hint; font-size: 13px; color: var(--ink-3); text-align: center; }
+.map-sec > .map-box { min-height: 0; }
+.map .ln { fill: none; stroke: var(--fill-2); stroke-width: 1.6; }
+.map .ln.on { stroke: var(--accent); stroke-width: 2.6; }
+.map .mn .hit { fill: transparent; }
+.map .mn:hover .md, .map .mn.sel .md { stroke: var(--ink); stroke-width: 2.5; }
+.map .mn.sel text { fill: var(--accent); }
+.map .mn text { font-weight: 600; }
+.chips { flex-wrap: wrap; }
+.kicker .kdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--k); margin-right: 6px; vertical-align: 1px; }
+.ls-plain { font-size: 16px; line-height: 1.45; }
+.ls-nav { gap: 8px; }
+.ls-nav > [data-prev], .ls-nav > [data-next] { flex: 0 0 50px; padding: 0; }
+.ls-body { display: grid; gap: 10px; }
+.linkcard .answer-box { background: var(--accent-soft); border-radius: var(--r-md); padding: 10px 12px; }
+.linkcard .sheet-title { font-size: 18px; padding-right: 0; }
+@media (orientation: landscape) and (max-height: 500px) {
+  .map-sec { grid-template-columns: 1fr; grid-template-areas: "chips" "map" "hint"; }
+  .map-sec > .map-hint { display: none; }
+}
+@media (orientation: landscape) and (max-height: 500px) { .zoom.tab-map .map-sec { grid-template-columns: 1fr; } }
+.seg2 button { white-space: nowrap; }
+.seg-n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 4px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; vertical-align: 1px; }
+@media (max-width: 380px) {
+  .seg2 button { font-size: 13.5px; }
+  .mchip { min-height: 30px; padding: 0 9px; font-size: 12.5px; gap: 4px; }
+  .map-sec { padding: 10px 10px; }
+}
+
+/* ---------- bottom nav: five tabs ---------- */
+.nav { grid-template-columns: repeat(5, 1fr); }
+.nav-btn span { white-space: nowrap; }
+@media (max-width: 360px) { .nav-btn { font-size: 10.5px; } .nav-btn svg { width: 23px; height: 23px; } }
+
+/* ---------- feedback ---------- */
+.fbwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.fb { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding-top: 6px; }
+.fb .hello .kicker { margin-bottom: 4px; }
+.fb-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fb-chips button {
+  min-height: 64px; padding: 10px 14px; border-radius: var(--r-md); background: var(--fill); color: var(--ink); text-align: left;
+  font: 600 15px/1.2 var(--sans); transition: background .2s, box-shadow .2s, color .2s;
+}
+.fb-chips button:active { transform: scale(.96); }
+.fb-more { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.fb-more[hidden] { display: none; }
+.fb-more label { font-weight: 600; font-size: 15px; }
+.fb-more label .soft { color: var(--ink-3); font-weight: 500; }
+.fb-more textarea {
+  flex: 1; min-height: 72px; resize: none; border: 0; border-radius: var(--r-md);
+  background: var(--fill); padding: 14px; font-size: 17px; line-height: 1.35;
+}
+.fb-more textarea:focus { outline: none; box-shadow: var(--ring); }
+.fb-more .row .grow { flex: 1; }
+.fb-hint { color: var(--ink-3); font-size: 14px; }
+@media (max-height: 640px) { .fb-chips button { min-height: 52px; } }
+.fb-picked { display: flex; align-items: center; gap: 8px; }
+.fb-pill { min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; font: 600 15px/1.2 var(--sans); }
+.fb-more textarea { overflow: hidden; }
+.fb-done { align-items: center; justify-content: center; text-align: center; gap: 10px; }
+.fb-done h1 { font: 700 1.55em/1.1 var(--serif); letter-spacing: -.022em; }
+.fb-done p { color: var(--ink-2); margin-bottom: 8px; }
+.fb-tick { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; }
+.fb-tick svg { width: 28px; height: 28px; fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-height: 500px) { .fb { gap: 8px; } .fb-chips { grid-template-columns: repeat(3, 1fr); gap: 6px; } .fb-chips button { min-height: 40px; padding: 6px 10px; font-size: 14px; } .fb-more textarea { min-height: 48px; } }

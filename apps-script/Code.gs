@@ -35,8 +35,15 @@ var TABS = {
   Evidence:      { mode: 'overwrite', cols: [['ID', 'id'], ['Kind', 'kind'], ['Title', 'title'], ['Severity', 'severity'], ['Grade', 'grade'], ['AppliesWhen', 'appliesWhen'], ['Entities', 'entities'], ['AskYourDoctor', 'ask'], ['Text', 'text'], ['Sources', 'sources'], ['Plain', 'plain'], ['AskPlain', 'askPlain']] },
   Sources:       { mode: 'overwrite', cols: [['ID', 'id'], ['Type', 'type'], ['Grade', 'grade'], ['Title', 'title'], ['Year', 'year'], ['URL', 'url']] },
   Notes:         { mode: 'append', cols: [['TimestampUTC', 'tsUTC'], ['By', 'by'], ['Text', 'text'], ['Tag', 'tag']] },
-  Changelog:     { mode: 'append', cols: [['TimestampUTC', 'ts'], ['Tab', 'tab'], ['Key', 'key'], ['OldValue', 'old'], ['NewValue', 'new'], ['By', 'by'], ['Source', 'source']] }
+  Changelog:     { mode: 'append', cols: [['TimestampUTC', 'ts'], ['Tab', 'tab'], ['Key', 'key'], ['OldValue', 'old'], ['NewValue', 'new'], ['By', 'by'], ['Source', 'source']] },
+  Feedback:      { mode: 'append', cols: [['TimestampUTC', 'ts'], ['By', 'by'], ['Chip', 'chip'], ['Text', 'text'], ['Screen', 'screen'], ['Status', 'status']] },
+  // Technical tabs, never read into the app. _Chats holds each chat reply in
+  // full (for recovering a reply a phone missed); _Ops remembers each write
+  // the app made, so a write sent twice is only applied once.
+  _Chats:        { mode: 'append', cols: [['Rid', 'rid'], ['TimestampUTC', 'ts'], ['By', 'by'], ['ThreadId', 'threadId'], ['Data', 'data']] },
+  _Ops:          { mode: 'append', cols: [['OpId', 'opId'], ['TimestampUTC', 'ts'], ['Action', 'action'], ['Result', 'result']] }
 };
+var OPS_KEEP = 2000;
 
 var APPT_STATUS = ['booked', 'done', 'moved', 'cancelled'];
 // Tabs whose rows the fact checker asks about, and the column that names a row.
@@ -200,7 +207,9 @@ function readCanon() {
     clinicians: arr('Clinicians'),
     evidence: arr('Evidence'),
     sources: arr('Sources'),
-    notes: arr('Notes'),
+    // Older chat notes carried their full reply data; it is left in the Sheet
+    // but never sent to the app.
+    notes: arr('Notes').map(function (n) { if (n.tag === 'concern') n.text = String(n.text).split('\nDATA: ')[0]; return n; }),
     changelog: arr('Changelog').slice(-100), // last 100 only; full history lives in the sheet
     sheetUrl: ss.getUrl ? ss.getUrl() : '',
     serverTimeUTC: nowUTC(),
@@ -371,6 +380,32 @@ var ACTIONS = {
     return json({ ok: true, checked: today });
   },
 
+  // Feedback about the app itself: a chip, and optionally her own words.
+  feedback: function (p, by) {
+    var bad = need(p, ['chip']);
+    if (bad) return err(bad);
+    var tsU = nowUTC();
+    appendObj('Feedback', { ts: tsU, by: by, chip: String(p.chip).slice(0, 80), text: String(p.text || '').slice(0, 4000), screen: String(p.screen || '').slice(0, 40), status: 'new' });
+    return json({ ok: true, timestampUTC: tsU });
+  },
+
+  // One chat exchange: a short row in Notes (what she asked, how urgent, the
+  // reply) and the full reply data in _Chats, so reads stay small.
+  chat: function (p, by) {
+    var bad = need(p, ['rid', 'text']);
+    if (bad) return err(bad);
+    var tsU = nowUTC();
+    var chats = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_Chats');
+    if (chats) {
+      appendObj('_Chats', { rid: p.rid, ts: tsU, by: by, threadId: p.threadId || '', data: String(p.data || '').slice(0, 45000) });
+      appendObj('Notes', { tsUTC: tsU, by: by, text: String(p.text).slice(0, 5000), tag: 'concern' });
+    } else {
+      // A Sheet that has not run setup() yet: keep the old single-row form.
+      appendObj('Notes', { tsUTC: tsU, by: by, text: (String(p.text) + '\nDATA: ' + String(p.data || '')).slice(0, 45000), tag: 'concern' });
+    }
+    return json({ ok: true, timestampUTC: tsU });
+  },
+
   profile: function (p, by) {
     var bad = need(p, ['key', 'value']);
     if (bad) return err(bad);
@@ -463,20 +498,76 @@ function doGet(e) {
     if (p.secret !== appSecret()) return err('bad secret');
     if (p.action === 'ping') return json({ ok: true, time: nowUTC() });
     if (p.action === 'read') return json(readCanon());
+    if (p.action === 'answer') return json(readAnswer(String(p.rid || '')));
     return err('unknown action');
   } catch (ex) {
     return err('server error: ' + ex.message);
   }
 }
 
+// One write at a time (two phones cannot race for the same new ID), and a
+// write the app sends twice (a lost reply, then a retry) is applied once:
+// the second time, the first result is returned and nothing is written.
 function doPost(e) {
+  var lock = null;
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (body.secret !== appSecret()) return err('bad secret');
     var fn = ACTIONS[body.action];
     if (!fn) return err('unknown action: ' + body.action);
-    return fn(body.payload || {}, body.by || 'app');
+    lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    var opId = String(body.opId || '').slice(0, 64);
+    if (opId) {
+      var seen = findOp(opId);
+      if (seen) { seen.duplicate = true; return json(seen); }
+    }
+    var out = fn(body.payload || {}, body.by || 'app');
+    if (opId) {
+      var res = JSON.parse(out.getContent());
+      if (res.ok) recordOp(opId, body.action, res);
+    }
+    return out;
   } catch (ex) {
     return err('server error: ' + ex.message);
+  } finally {
+    if (lock) try { lock.releaseLock(); } catch (ex2) { /* already released */ }
   }
+}
+
+function findOp(opId) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_Ops');
+  if (!s || s.getLastRow() < 2) return null;
+  var n = Math.min(s.getLastRow() - 1, OPS_KEEP + 500);
+  var rows = s.getRange(s.getLastRow() - n + 1, 1, n, 4).getValues();
+  for (var i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][0]) === opId) { try { return JSON.parse(rows[i][3]); } catch (ex) { return { ok: true }; } }
+  }
+  return null;
+}
+
+function recordOp(opId, action, res) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_Ops');
+  if (!s) return; // setup() not run yet: writes still work, just without the ledger
+  appendObj('_Ops', { opId: opId, ts: nowUTC(), action: action, result: JSON.stringify(res).slice(0, 1000) });
+  // The ledger is the one tab that is trimmed: only its oldest rows go.
+  var extra = s.getLastRow() - 1 - OPS_KEEP;
+  if (extra > 200) s.deleteRows(2, extra);
+}
+
+// The full reply for one chat, by its request id.
+function readAnswer(rid) {
+  if (!rid) return { ok: false, error: 'missing rid' };
+  var chats = rowObjects('_Chats');
+  for (var i = chats.length - 1; i >= 0; i--) {
+    if (chats[i].rid === rid) {
+      var note = rowObjects('Notes').filter(function (n) { return n.tag === 'concern' && n.text.indexOf('\nRID: ' + rid) >= 0; }).pop();
+      return { ok: true, rid: rid, data: chats[i].data, note: note ? note.text : '' };
+    }
+  }
+  // Older chats kept everything in their Notes row.
+  var old = rowObjects('Notes').filter(function (n) { return n.tag === 'concern' && n.text.indexOf('\nRID: ' + rid + '\n') >= 0; }).pop();
+  if (!old) return { ok: false, pending: true, error: 'not found' };
+  var at = old.text.indexOf('\nDATA: ');
+  return { ok: true, rid: rid, data: at >= 0 ? old.text.slice(at + 7) : '', note: at >= 0 ? old.text.slice(0, at) : old.text };
 }

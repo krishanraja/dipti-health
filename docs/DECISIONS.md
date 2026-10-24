@@ -2,6 +2,18 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
+## 2026-10-24: design system v2, map on phones, Sheet integrity, Feedback
+
+| # | Decision | By | Why / carry-forward |
+|---|---|---|---|
+| D22 | Design system v2 (`public/ds.css`, loaded last): fills not borders, one button family (`.btn`, `.primary`, `.tinted`, `.quiet`), a 2×2 status picker, a pill toast, sheets with a close button and swipe-down | Krish asked for it 10x after an on-device review; approved from screenshots | Fix the system, not one screen at a time |
+| D23 | The Conditions map is two columns around the condition, not a circle. Kind chips always filter. On a phone a tapped dot opens a sheet with previous and next; wide screens keep the inline card | Krish (the problem), Claude (the layout); approved from screenshots | A circle could not hold 12 labels on a phone. Every label gets its own row of at least 30 px; if "All" cannot, the map opens on the biggest kind |
+| D24 | Every write carries an `opId`. Code.gs records it in a hidden `_Ops` tab and applies each op once; all writes run under a script lock | Claude, after an audit Krish asked for | Offline replays duplicated rows, and two devices could take the same ID. `_Ops` keeps its last 2,000 rows and is the only tab ever trimmed. Nothing deletes her data |
+| D25 | A write the Sheet refuses (bad id, bad value) returns 422 and leaves the offline queue with a message; only network or server failures are retried | Claude | A refused write used to retry forever and keep "waiting to save" on screen |
+| D26 | Full chat replies live in a hidden `_Chats` tab. Notes keep the short form only, and reads strip old DATA | Claude | Each chat put up to 40,000 characters into Notes, which every read returned, so reads slowed as chats piled up |
+| D27 | Ellie's read-aloud is removed | Krish | Not needed |
+| D28 | A fifth tab, Feedback: one tap on a chip, an optional note (typed or spoken), saved to a `Feedback` tab with the screen she came from. The Ask tab is now "Ask Ellie" so five labels fit at 320 px | Krish (the tab), Claude (chips and copy); approved from screenshots | `Status` starts as `new` so Krish can work through them |
+
 ## 2026-10-23 (evening): the fact checker
 
 | # | Decision | By | Why / carry-forward |
