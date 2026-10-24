@@ -2,6 +2,7 @@
 // On a phone it is one calm screen; on a wide screen the same place shows
 // the fuller overview (dashboard.js). Everything comes from her Sheet.
 import { priorities, questionsByDoctor, STATUS } from './record-model.js';
+import { todayLine } from './care-model.js';
 import { SYMPTOMS, WHEN, SEVERITY, TAGS, WORRY, symptomLevel, noteText, localDay, lastCheckin, TZ } from './dipti-model.js';
 import { CONTACTS_SELF, CONTACTS, SICK_DAY } from './triage.js';
 import { DOCTOR } from './persona.js';
@@ -49,18 +50,25 @@ function render() {
   const next = nextAppointment(canon);
   const facts = factsToday(canon);
 
-  root.innerHTML = `<div class="fit today-home">
-    <div class="hello"><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}</h1><p class="${next ? '' : 'drop'}">${next ? `<b>Next:</b> ${esc(next.with)}, ${esc(whenText(next.date, next.time))}` : esc(date)}</p></div>
-    <p class="kicker">${you() ? 'Your' : "Dipti's"} priorities</p>
-    <div class="prios">${pr.map((p, i) => `<button class="prio ${i === 0 ? 'lead' : ''}" data-p="${esc(p.id)}">
-        <span class="prio-top"><span class="prio-n">${i + 1}</span><b>${esc(p.title)}</b><i class="chip ${p.statusInfo.tone}">${esc(p.statusInfo.label)}</i></span>
-        ${p.nextStep ? `<span class="prio-next${i === 0 ? '' : ' drop'}"><small>Next step</small>${esc(p.nextStep)}</span>` : ''}
-      </button>`).join('') || '<p class="soft">No priorities in the Sheet yet. Add them in the Priorities tab.</p>'}</div>
+  // One calm line, one step for today, the rest in a quiet list. The focus
+  // is the first priority's next step; the others say where they stand.
+  const short = t => String(t || '').replace(/\s*\(.*\)\s*$/, '');
+  const tagOf = p => (p.status === 'waiting' ? ['wait', 'Waiting'] : p.status === 'better' ? ['ok', 'Getting better'] : ['hand', 'In hand']);
+  const [lead, ...rest] = pr;
+  root.innerHTML = `<div class="fit today-home calm">
+    <div class="hello"><p class="lbl">${esc(next ? `Next: ${next.with}, ${whenText(next.date, next.time)}` : date)}</p><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}.</h1><p class="lede">${esc(todayLine(canon).replace('Everything else', pr.length ? 'Everything else' : 'Everything'))}</p></div>
+    ${lead ? `<div class="focus" data-p="${esc(lead.id)}" role="button" tabindex="0">
+        <span class="lbl">Today's one step</span>
+        <b>${esc(lead.nextStep || short(lead.title))}</b>
+        <span class="focus-foot"><small>For ${you() ? 'your' : 'her'} ${esc(short(lead.title).toLowerCase())}</small><button class="done-it" data-done="${esc(lead.id)}">Done it</button></span>
+      </div>` : ''}
+    ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small>${esc(p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
     ${checkedToday
       ? `<button class="kc checkin done" data-check><span><small>Today's check-in ✓</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
       : `<button class="kc checkin" data-check><span><small>30 seconds</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
-    ${facts.length ? `<button class="kc facts" data-facts><span><small>Still right? · ${facts.length} quick check${facts.length === 1 ? '' : 's'}</small><b>${esc(facts[0].question)}</b></span>${CHEV}</button>` : ''}
+    ${facts.length ? `<button class="facts-line" data-facts><span>Still right? ${facts.length} quick check${facts.length === 1 ? '' : 's'}</span>${CHEV}</button>` : ''}
   </div>`;
+  root.querySelector('[data-done]')?.addEventListener('click', e => { e.stopPropagation(); const p = pr.find(x => x.id === e.currentTarget.dataset.done); if (p) editNextStep(canon, p, true); });
   root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openPriority(b.dataset.p));
   $('[data-check]').onclick = startCheckin;
   root.querySelector('[data-facts]')?.addEventListener('click', () => factFlow(facts));
@@ -103,10 +111,17 @@ export function openPriority(id) {
   });
 }
 
-function editNextStep(canon, p) {
-  ctx.openSheet(`<p class="kicker">${esc(p.title)}</p><h3 class="sheet-title">What is the next step?</h3>
-    <textarea id="nextStep" rows="3" maxlength="300" placeholder="e.g. Appointment booked for Tuesday">${esc(p.nextStep)}</textarea>
-    <div class="row"><button class="btn ghost" data-close>Cancel</button><button class="btn primary grow" data-save>Save</button></div>`, (sheet, close) => {
+// done: she has just done the step. It goes into her history, and she can
+// say what comes next (or leave it for now).
+function editNextStep(canon, p, done = false) {
+  ctx.openSheet(`<p class="kicker">${esc(p.title)}</p><h3 class="sheet-title">${done ? 'Well done. What comes next?' : 'What is the next step?'}</h3>
+    ${done ? `<p class="soft">You did: ${esc(p.nextStep)}</p>` : ''}
+    <textarea id="nextStep" rows="3" maxlength="300" placeholder="${done ? 'e.g. Wait for them to call back' : 'e.g. Appointment booked for Tuesday'}">${done ? '' : esc(p.nextStep)}</textarea>
+    <div class="row"><button class="btn ghost" data-close>${done ? 'Not sure yet' : 'Cancel'}</button><button class="btn primary grow" data-save>Save</button></div>`, (sheet, close) => {
+    if (done) {
+      ctx.addNote(TAGS.says, `DIPTI SAYS: Done: ${p.nextStep}`);
+      sheet.querySelector('[data-close]').addEventListener('click', () => savePriority(canon, p, { nextStep: '' }));
+    }
     sheet.querySelector('[data-save]').onclick = () => {
       const nextStep = sheet.querySelector('#nextStep').value.trim();
       close();

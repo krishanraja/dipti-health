@@ -2,6 +2,19 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
+## 2026-10-24 (night): calm by default
+
+Krish: Dipti is prone to health anxiety and rabbit holes. The app should simplify and steady her, never belittle what she feels, and never make her feel she has more wrong than she does. No data is removed.
+
+| # | Decision | By | Why / carry-forward |
+|---|---|---|---|
+| D38 | Calm by default, depth on request: every screen leads with what is in hand and who is looking after it; detail is one tap deeper, never removed | Krish (the brief and the mock) | Approved from a rendered mock before build |
+| D39 | Conditions becomes My care: her conditions grouped into a few areas (teeth, tummy and liver, hormones and energy, joints, heart, mood and sleep, everyday health), each with who looks after it. Only areas tied to a live priority are "being looked into now"; the rest are "known and looked after" | Krish (approved), Claude (areas) | 23 conditions in a flat list read as 23 problems. `public/js/care-model.js`; every condition is in exactly one area (tested) |
+| D40 | Statuses only repeat the Sheet: In hand, Waiting, Getting better, Long-term, Looked after, Settled. No link counts on a condition; the map opens on medicines first | Claude | A count of links reads as a count of problems. "Steady" from the mock became "Looked after", because stability is not something the Sheet records |
+| D41 | Today shows one step: a sentence on where things stand, today's one step from the first priority (with "Done it"), the others as quiet lines, then the check-in | Krish (approved) | "Done it" records the step in her history and asks what comes next |
+| D42 | Record and the overview use words, not big numbers; "things to clear up" is "To tidy up, nothing urgent"; out-of-range results and prescription differences use neutral tones, kept for real red flags only | Claude | Same facts, less alarm |
+| D43 | Visual: warm paper tones, Newsreader for what she reads, sentence-case labels | Krish (approved mock) | Loaded from Google Fonts with a Georgia fallback, so offline still reads well |
+
 ## 2026-10-24 (evening): one input console, notes in her voice, buttons v3
 
 | # | Decision | By | Why / carry-forward |

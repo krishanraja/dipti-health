@@ -6,7 +6,7 @@ It is built on the design system, architecture and mission of Beside (`krishanra
 
 ## What it does
 
-- **Today (phone).** Shows her top three priorities, each with one next step. It also has a 30-second check-in that scores tooth pain, tummy pain and tiredness from 0 to 10 and records sleep, bowels and mood. From here she can log a symptom, photograph a result, or tick her tablets.
+- **Today (phone).** One sentence on where things stand, today's one step from her first priority (with "Done it", which records it and asks what comes next), the other priorities as quiet lines saying where they stand, and a 30-second check-in that scores tooth pain, tummy pain and tiredness from 0 to 10 and records sleep, bowels and mood. Everything she adds goes through the round + button.
 - **Overview (screens 1024 px and wider).** One screen in three columns:
   - Now: priorities, check-in trends, and questions grouped by doctor.
   - Medicines: her current list side by side with the last written prescription.
@@ -14,7 +14,7 @@ It is built on the design system, architecture and mission of Beside (`krishanra
 
   Clicking any card opens its detail and the graded evidence behind it.
 - **Record.** Priorities, medicines, results, questions, things to clear up, doctors and history. Each section links to its tab in the Sheet.
-- **Conditions.** One condition at a time. "On its own" shows what it is, where it stands (long-term, being watched or settled; since when; who looks after it), the medicines and results in her record that belong to it, and the questions for that doctor. "How it connects" draws a two-column map of everything the research pack links it to, filtered by kind (medicines, results, conditions, symptoms). Tapping a dot gives one plain sentence and one question she could ask; on a phone this opens in a sheet that steps through every link. On wide screens the list, the condition and its map sit side by side.
+- **My care.** Her conditions grouped into a few areas of the body, each with the person who looks after it and where it stands. What is being looked into now comes first; everything else is known and looked after. Open an area to see each condition in plain words, and open a condition for what it is and what it is linked to in her record (the research pack's map, medicines first).
 - **Ask Ellie.** A chat with a young English GP who knows her whole record and the research pack in her Sheet. Replies are streamed. She can use voice or a photo.
 - **Still right? (the fact checker).** Her medicines, symptoms and appointments change often, so the app keeps asking, gently. A few quick checks come up each day on Today (and in the overview): "Are you still taking X?", "Did you see Dr Y yesterday?", "How is your tooth pain now?". One tap answers; a change asks for the new dose or date on a second screen. Anything not confirmed in 7 days comes round again; a booked appointment that has passed comes first. Each answer is written to her Sheet and its Changelog straight away. In chat, when she mentions a change ("I stopped X", "the dentist moved me to Friday"), Ellie shows a confirm card, and nothing is written until she taps Yes.
 - **Appointments.** In Record: what is coming up and what is done, with an Add button. The next one shows on Today, and summaries for a doctor list that doctor's next appointment and when the medicine list was last confirmed.

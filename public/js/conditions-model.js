@@ -5,7 +5,7 @@
 // of possible causes. Pure functions; browser and tests.
 import { resultCards, measureOf } from './metrics.js';
 
-export const GROUPS = [['long-term', 'Long-term'], ['watching', 'Being watched'], ['settled', 'Settled']];
+export const GROUPS = [['long-term', 'Long-term'], ['watching', 'Looked after'], ['settled', 'Settled']];
 export const KINDS = { med: 'Medicines', result: 'Results', condition: 'Other conditions', symptom: 'How you feel' };
 const KIND_ORDER = ['med', 'result', 'condition', 'symptom'];
 const STOP = new Set('the and with for from her not pain low high raised mild small grade still place pattern long term'.split(' '));

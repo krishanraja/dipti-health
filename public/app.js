@@ -292,6 +292,7 @@ function buildRecord() { mountRecord($('#rec'), ctx()); }
 function buildConditions() { mountConditions($('#conds'), ctx()); }
 // Lets the no-scroll check (scripts/noscroll.mjs) open each condition directly.
 window.__openCondition = id => { go('conditions'); openCondition(id); };
+window.__careHome = () => { go('conditions'); conditionsHome(); };
 function buildChat() { mountChat($('#chat'), { ...ctx(), role: () => session.role, people: () => store.get('people', []), choose: id => choose(id, { reload: true }), showLogin, setSomeone: () => settingsSheet() }); }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkPending(); });
 

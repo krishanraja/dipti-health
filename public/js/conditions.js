@@ -2,25 +2,33 @@
 // to the rest of her record. Phone: the list, then one condition with two
 // views (On its own, How it connects). Wide screens: list, the condition and
 // its map side by side. Nothing scrolls: lists page, the map sizes to its box.
-import { conditionList, zoom, linkStory, KINDS, GROUPS } from './conditions-model.js';
+import { zoom, linkStory, KINDS, GROUPS } from './conditions-model.js';
+import { careAreas, areaOf } from './care-model.js';
+import { openPriority } from './today.js';
 import { fmtDate, parseDate, cardLabel } from './metrics.js';
 import { pager } from './pager.js';
 import { DOCTOR } from './persona.js';
 
-let ctx, root, sel = null, tab = 'own', node = null, filter = null;
+let ctx, root, sel = null, area = null, tab = 'own', node = null, filter = null;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const BACK = '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>';
 const CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
 
 export function mountConditions(el, context) { root = el; ctx = context; render(); }
 export function refreshConditions() { if (root) render(); }
-export function conditionsHome() { sel = null; if (root) render(); }
+export function conditionsHome() { sel = null; area = null; if (root) render(); }
 export function openCondition(id) { pick(id); }
 
 const you = () => ctx.me().dipti;
 const yours = () => (you() ? 'your' : "Dipti's");
 
-function pick(id) { sel = id; tab = 'own'; node = null; filter = null; if (root) render(); }
+function pick(id) {
+  sel = id; tab = 'own'; node = null; filter = null;
+  const c = (ctx.canon()?.conditions || []).find(x => (x.key || 'C:' + String(x.name).toLowerCase()) === id);
+  if (c) area = areaOf(c).id;
+  if (root) render();
+}
+function pickArea(id) { area = id; sel = null; tab = 'own'; node = null; filter = null; if (root) render(); }
 
 function since(s) {
   const t = String(s || '').trim();
@@ -33,47 +41,86 @@ function since(s) {
 function render() {
   const canon = ctx.canon();
   if (!canon) {
-    root.innerHTML = `<div class="rec-empty"><p class="kicker">Conditions</p><h3>${ctx.session().sheetConfigured === false ? 'The Sheet is not connected yet' : 'Loading your record'}</h3></div>`;
+    root.innerHTML = `<div class="rec-empty"><p class="kicker">My care</p><h3>${ctx.session().sheetConfigured === false ? 'The Sheet is not connected yet' : 'Loading your record'}</h3></div>`;
     return;
   }
-  const groups = conditionList(canon);
-  const all = groups.flatMap(g => g.items);
-  if (!all.length) {
-    root.innerHTML = `<div class="rec-empty"><p class="kicker">Conditions</p><h3>No conditions in the Sheet yet</h3><p class="soft">Add them in the Conditions tab and they appear here.</p></div>`;
+  const areas = careAreas(canon);
+  if (!areas.length) {
+    root.innerHTML = `<div class="rec-empty"><p class="kicker">My care</p><h3>Nothing in the Sheet yet</h3><p class="soft">Add conditions in the Conditions tab and they appear here.</p></div>`;
     return;
   }
+  if (area && !areas.some(a => a.id === area)) area = null;
+  const all = areas.flatMap(a => a.conditions);
   if (sel && !all.some(c => c.id === sel)) sel = null;
   const wide = ctx.isWide();
-  if (wide && !sel) sel = all[0].id;
+  if (wide && !area) area = areas[0].id;
   root.classList.toggle('wide', wide);
-  if (wide) return renderWide(canon, groups);
-  if (!sel) return renderList(groups);
-  return renderZoom(canon);
+  if (wide) return renderWide(canon, areas);
+  if (sel) return renderZoom(canon, areas);
+  if (area) return renderArea(canon, areas.find(a => a.id === area));
+  return renderAreas(areas);
 }
 
-/* ---------- the list ---------- */
-function listItems(groups) {
+/* ---------- the areas ---------- */
+const AREA_ICON = {
+  tooth: '<path d="M7 4c-2 0-3 2-3 4 0 3 1 4 1.5 7S7 20 8.5 20 10 16 12 16s2 4 3.5 4 2.5-2 3-5S20 11 20 8c0-2-1-4-3-4-2 0-3 1-5 1S9 4 7 4z"/>',
+  gut: '<path d="M12 3c4 0 7 3 7 7 0 5-4 11-7 11s-7-6-7-11c0-4 3-7 7-7z"/><path d="M9 11c1 1.5 5 1.5 6 0"/>',
+  drop: '<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>',
+  joint: '<circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/><path d="M9 9l6 6"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  moon: '<path d="M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z"/>',
+  leaf: '<path d="M5 19c8 0 14-6 14-14C11 5 5 11 5 19z"/><path d="M5 19l7-7"/>',
+};
+const icon = a => `<span class="area-ic" aria-hidden="true"><svg viewBox="0 0 24 24">${AREA_ICON[a.icon] || AREA_ICON.leaf}</svg></span>`;
+const tag = t => `<i class="ctag ${t.tone}">${esc(t.text)}</i>`;
+
+function areaItems(areas) {
   const items = [];
-  groups.forEach(g => {
-    items.push({ html: `<p class="kicker">${esc(g.label)}</p>`, keep: true });
-    g.items.forEach(c => items.push({ html: `<button class="crow" data-c="${esc(c.id)}" ${c.id === sel ? 'aria-current="true"' : ''}>
-      <span class="crow-top"><b>${esc(c.short)}</b>${c.priority ? `<i class="chip accent">Priority ${c.priority.n}</i>` : ''}</span>
-      ${c.plain ? `<small class="crow-plain">${esc(c.plain.split(/(?<=\.)\s/)[0])}</small>` : ''}
-      <span class="crow-meta">${c.countLine ? `${esc(c.countLine)} · ` : ''}${c.evidence === 'Doc' ? 'from a report' : you() ? 'you said' : 'Dipti said'}</span>
-    </button>`, id: c.id }));
-  });
+  const now = areas.filter(a => a.now), rest = areas.filter(a => !a.now);
+  if (now.length) items.push({ html: '<p class="lbl">Being looked into now</p>', keep: true });
+  now.forEach(a => items.push({ html: areaRow(a) }));
+  if (rest.length) items.push({ html: '<p class="lbl">Known and looked after</p>', keep: true });
+  rest.forEach(a => items.push({ html: areaRow(a) }));
   return items;
 }
+const areaRow = a => `<button class="area-row" data-area="${a.id}" ${a.id === area ? 'aria-current="true"' : ''}>${icon(a)}<span class="area-t"><b>${esc(a.label)}</b><small>${esc(a.summary)}</small></span>${tag(a.tag)}</button>`;
 
-function wireList(body) {
-  body.querySelectorAll('[data-c]').forEach(b => b.onclick = () => pick(b.dataset.c));
+function renderAreas(areas) {
+  root.innerHTML = `<div class="cv care">
+    <div class="hello"><h1>${you() ? 'Your' : "Dipti's"} care</h1><p>Each part of ${you() ? 'you' : 'her'} has someone looking after it.</p></div>
+    <div class="cv-list"></div></div>`;
+  pager(root.querySelector('.cv-list'), areaItems(areas), { label: 'Care', onRender: b => b.querySelectorAll('[data-area]').forEach(x => x.onclick = () => pickArea(x.dataset.area)) });
 }
 
-function renderList(groups) {
-  root.innerHTML = `<div class="cv">
-    <div class="hello"><h1>${you() ? 'Your' : "Dipti's"} conditions</h1><p>Tap one to look at it on its own, and see what it connects to.</p></div>
-    <div class="cv-list"></div></div>`;
-  pager(root.querySelector('.cv-list'), listItems(groups), { onRender: wireList, label: 'Conditions' });
+// One area: who looks after it, what is next, and each condition in it.
+function areaLede(a) {
+  const who = a.doctor ? `Looked after by ${a.doctor}.` : `${you() ? 'You and your doctors keep' : 'Dipti and her doctors keep'} an eye on this.`;
+  const now = !a.priority ? ' Nothing needs doing right now.' : a.priority.status === 'waiting' ? ' Right now this is waiting on one thing.' : ' There is one next step.';
+  return who + now;
+}
+function areaBody(a) {
+  return `${a.priority ? `<button class="next-card" data-prio="${esc(a.priority.id)}"><span class="lbl">What's next</span><b>${esc(a.priority.nextStep || a.priority.title)}</b></button>` : ''}
+    <div class="area-list"></div>
+    ${a.doctor ? `<div class="area-foot"><button class="btn quiet" data-note="${esc(a.doctor)}">Write a note to ${esc(a.doctor)}</button></div>` : ''}`;
+}
+function wireArea(box, a) {
+  pager(box.querySelector('.area-list'), a.conditions.map(c => ({ html: `<button class="cond-row" data-c="${esc(c.id)}" ${c.id === sel ? 'aria-current="true"' : ''}><span class="area-t"><b>${esc(c.short)}</b>${c.line ? `<small>${esc(c.line)}</small>` : ''}</span>${tag(c.tag)}</button>` })), {
+    label: a.label, onRender: b => b.querySelectorAll('[data-c]').forEach(x => x.onclick = () => pick(x.dataset.c)),
+  });
+  box.querySelector('[data-prio]')?.addEventListener('click', e => openPriority(e.currentTarget.dataset.prio));
+  box.querySelector('[data-note]')?.addEventListener('click', e => {
+    const name = e.currentTarget.dataset.note;
+    const doc = (ctx.canon()?.clinicians || []).find(d => d.name.startsWith(name));
+    ctx.shareBrief(doc ? doc.name : '');
+  });
+}
+function renderArea(canon, a) {
+  root.innerHTML = `<div class="cv care area-view">
+    <button class="back" data-home>${BACK}${you() ? 'Your' : "Dipti's"} care</button>
+    <div class="hello"><h1>${esc(a.label)}</h1><p>${esc(areaLede(a))}</p></div>
+    ${areaBody(a)}</div>`;
+  root.querySelector('[data-home]').onclick = conditionsHome;
+  wireArea(root.querySelector('.area-view'), a);
 }
 
 /* ---------- one condition ---------- */
@@ -91,18 +138,27 @@ function ownItems(z) {
     <dt>Comes from</dt><dd>${c.evidence === 'Doc' ? 'A lab or scan report' : you() ? 'What you said' : 'What Dipti said'}</dd>
     ${z.doctor ? `<dt>Looks after it</dt><dd>${esc(z.doctor.name)}</dd>` : ''}
   </dl></section>` }];
-  if (z.meds.length || z.results.length) {
-    items.push({ html: `<section class="zsec"><p class="kicker">In ${yours()} record</p>
-      ${z.meds.map(({ med }) => `<div class="zrow"><span><b>${esc(med.name)}</b>${med.generic ? ` <small>${esc(med.generic)}</small>` : ''}</span><small>${esc(`${med.dose} ${med.timing}`.trim())}</small></div>`).join('')}
-      ${z.results.map(r => { const l = cardLabel(r); return `<div class="zrow"><span><b>${esc(r.def.short)}</b> <small>${esc(fmtDate(r.last.date, { year: true }))}</small></span><span>${r.points.slice(-3).map(p => `${p.below ? '<' : ''}${p.value}`).join(' → ')} <small>${esc(r.def.unit)}</small>${l.text ? ` <i class="chip ${l.tone}">${esc(l.text)}</i>` : ''}</span></div>`; }).join('')}
-    </section>` });
+  // Medicines and results: the heading stays with its first row, and the
+  // pager fits as many rows on a page as there is room for.
+  const rows = [
+    ...z.meds.map(({ med }) => `<div class="zrow"><span><b>${esc(med.name)}</b>${med.generic ? ` <small>${esc(med.generic)}</small>` : ''}</span><small>${esc(`${med.dose} ${med.timing}`.trim())}</small></div>`),
+    ...z.results.map(r => { const l = cardLabel(r); return `<div class="zrow"><span><b>${esc(r.def.short)}</b> <small>${esc(fmtDate(r.last.date, { year: true }))}</small></span><span>${r.points.slice(-3).map(p => `${p.below ? '<' : ''}${p.value}`).join(' → ')} <small>${esc(r.def.unit)}</small>${l.text ? ` <i class="chip ${l.tone}">${esc(l.text)}</i>` : ''}</span></div>`; }),
+  ];
+  if (rows.length) {
+    items.push({ html: `<p class="kicker zsec-h">In ${yours()} record</p>`, keep: true });
+    rows.forEach(r => items.push({ html: `<div class="zsec zsec-row">${r}</div>` }));
   }
   if (z.questions.length) {
     items.push({ html: `<section class="zsec"><p class="kicker">Questions${z.doctor ? ' for ' + esc(z.doctor.name) : ''}</p>
       <ol class="plan-steps">${z.questions.slice(0, 3).map(q => `<li>${esc(q.question)}</li>`).join('')}</ol>
       ${z.questions.length > 3 ? `<button class="link" data-allq>All ${z.questions.length} questions ${CHEV}</button>` : ''}</section>` });
   }
-  if (c.notes) items.push({ html: `<section class="zsec"><p class="kicker">From ${yours()} record</p><p class="soft">${esc(c.notes)}</p></section>` });
+  // Long notes page in pieces of a few sentences, so each page fits.
+  if (c.notes) {
+    const parts = [], sent = String(c.notes).match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [c.notes];
+    for (const x of sent) { if (!parts.length || (parts[parts.length - 1] + x).length > 240) parts.push(x.trim()); else parts[parts.length - 1] += ' ' + x.trim(); }
+    parts.forEach((t, i) => items.push({ html: `<section class="zsec"><p class="kicker">From ${yours()} record${parts.length > 1 ? ` (${i + 1} of ${parts.length})` : ''}</p><p class="soft">${esc(t)}</p></section>` }));
+  }
   return items;
 }
 
@@ -114,42 +170,55 @@ function askAbout(z) {
   return `Tell me about my ${z.short.toLowerCase()} in plain words, and how it connects to the rest of my health.`;
 }
 
-function renderZoom(canon) {
+// The two views of one condition. "What it's linked to" carries no count:
+// a number of links reads as a number of problems.
+const tabs = () => `<div class="seg2" role="tablist">
+      <button role="tab" data-tab="own" aria-selected="${tab === 'own'}">What it is</button>
+      <button role="tab" data-tab="map" aria-selected="${tab === 'map'}">What it's linked to</button>
+    </div>`;
+
+function renderZoom(canon, areas = careAreas(canon)) {
   const z = zoom(canon, sel);
-  const n = z.links.length;
+  const a = areas.find(x => x.id === area);
   root.innerHTML = `<div class="cv zoom tab-${tab}">
-    <button class="back" data-home>${BACK}Conditions</button>
+    <button class="back" data-home>${BACK}${esc(a ? a.label : 'Your care')}</button>
     ${head(z)}
-    <div class="seg2" role="tablist">
-      <button role="tab" data-tab="own" aria-selected="${tab === 'own'}">On its own</button>
-      <button role="tab" data-tab="map" aria-selected="${tab === 'map'}">How it connects${n ? ` <span class="seg-n">${n}</span>` : ''}</button>
-    </div>
+    ${tabs()}
     <div class="cv-body"></div>
-    <button class="btn primary" data-ask>Ask ${esc(DOCTOR.name)} about this</button>
+    <button class="btn primary" data-ask>Ask ${esc(DOCTOR.first)} about this</button>
   </div>`;
-  root.querySelector('[data-home]').onclick = conditionsHome;
-  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderZoom(canon); });
+  root.querySelector('[data-home]').onclick = () => { sel = null; render(); };
+  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; renderZoom(canon, areas); });
   root.querySelector('[data-ask]').onclick = () => ctx.openAsk(askAbout(z));
   const box = root.querySelector('.cv-body');
   if (tab === 'own') pager(box, ownItems(z), { onRender: wireOwn, label: z.short });
   else mapView(box, z);
 }
 
-/* ---------- wide: list | condition | map ---------- */
-function renderWide(canon, groups) {
-  const z = zoom(canon, sel);
-  root.innerHTML = `<div class="cdesk">
-    <nav class="ccol cside" aria-label="${you() ? 'Your' : "Dipti's"} conditions"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} conditions</h1><p>Pick one. The rest of the page follows.</p></div><div class="cv-list"></div></nav>
+/* ---------- wide: areas | the area | one condition ---------- */
+// The areas lead; the panel follows the chosen area, and its right half
+// follows the chosen condition (the first one until she picks).
+function renderWide(canon, areas) {
+  const a = areas.find(x => x.id === area) || areas[0];
+  if (!sel || !a.conditions.some(c => c.id === sel)) sel = a.conditions[0]?.id || null;
+  const z = sel ? zoom(canon, sel) : null;
+  root.innerHTML = `<div class="cdesk care-desk">
+    <nav class="ccol cside" aria-label="${you() ? 'Your' : "Dipti's"} care"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} care</h1><p>Each part of ${you() ? 'you' : 'her'} has someone looking after it.</p></div><div class="cv-list"></div></nav>
     <div class="cdetail" aria-live="polite">
-      <section class="ccol">${head(z)}<div class="cv-body"></div><button class="btn primary" data-ask>Ask ${esc(DOCTOR.name)} about this</button></section>
-      <section class="ccol map-col"><div class="cv-map"></div></section>
+      <section class="ccol area-col"><div class="hello"><h2>${esc(a.label)}</h2><p>${esc(areaLede(a))}</p></div>${areaBody(a)}</section>
+      <section class="ccol cond-col tab-${tab}">${z ? `${head(z)}${tabs()}<div class="cv-body"></div><button class="btn primary" data-ask>Ask ${esc(DOCTOR.first)} about this</button>` : ''}</section>
     </div>
   </div>`;
-  const items = listItems(groups);
-  pager(root.querySelector('.cv-list'), items, { onRender: wireList, label: 'Conditions', start: Math.max(0, items.findIndex(i => i.id === sel)) });
-  pager(root.querySelector('.cv-body'), ownItems(z), { onRender: wireOwn, label: z.short });
+  const items = areaItems(areas);
+  pager(root.querySelector('.cv-list'), items, { label: 'Care', start: Math.max(0, items.findIndex(i => i.html.includes(`data-area="${a.id}"`))),
+    onRender: b => b.querySelectorAll('[data-area]').forEach(x => x.onclick = () => pickArea(x.dataset.area)) });
+  wireArea(root.querySelector('.area-col'), a);
+  if (!z) return;
+  root.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   root.querySelector('[data-ask]').onclick = () => ctx.openAsk(askAbout(z));
-  mapView(root.querySelector('.cv-map'), z);
+  const box = root.querySelector('.cond-col .cv-body');
+  if (tab === 'own') pager(box, ownItems(z), { onRender: wireOwn, label: z.short });
+  else mapView(box, z);
 }
 
 /* ---------- the map ---------- */
@@ -167,7 +236,8 @@ function mapView(box, z) {
   const wide = ctx.isWide();
   const kinds = Object.keys(KINDS).filter(k => links.some(l => l.kind === k));
   const count = k => links.filter(l => l.kind === k).length;
-  if (!filter || (filter !== 'all' && !kinds.includes(filter))) filter = 'all';
+  // Medicines first: the links she can act on. Everything else is one tap away.
+  if (!filter || (filter !== 'all' && !kinds.includes(filter))) filter = kinds.includes('med') ? 'med' : kinds.length > 1 ? 'all' : kinds[0];
   box.innerHTML = `<section class="zsec map-sec ${wide ? 'wide' : ''}">
     <div class="chips" role="group" aria-label="Show">${kinds.length > 1 ? `<button class="mchip" data-f="all" aria-pressed="${filter === 'all'}">All ${links.length}</button>` : ''}${kinds.map(k => `<button class="mchip k-${k}" data-f="${k}" aria-pressed="${filter === k || kinds.length === 1}" aria-label="${esc(KINDS[k])}, ${count(k)}"><i></i>${esc(CHIP[k])} ${count(k)}</button>`).join('')}</div>
     <div class="map-box"></div>
@@ -243,10 +313,8 @@ function linkSheet(z, list, i) {
 
 function linkCard(card, z, l) {
   if (!l) {
-    const c = z.counts;
-    const parts = Object.keys(KINDS).filter(k => c[k]).map(k => `${c[k]} ${KINDS[k].toLowerCase().replace('how you feel', c[k] === 1 ? 'thing you feel' : 'things you feel').replace(/s$/, c[k] === 1 ? '' : 's')}`);
     card.className = 'linkcard hint';
-    card.innerHTML = `<p><b>${esc(z.short)}</b> links to ${esc(parts.join(', '))} in ${yours()} record.</p><small>Click a dot to see how.</small>`;
+    card.innerHTML = `<p>The parts of ${yours()} record your doctors think about together with <b>${esc(z.short.toLowerCase())}</b>.</p><small>Click a dot to see how.</small>`;
     return;
   }
   const s = linkStory(l);

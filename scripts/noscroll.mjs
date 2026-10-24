@@ -168,13 +168,27 @@ async function flowWalk(p, vp, label) {
 }
 
 async function conditionsWalk(p, vp, wide) {
-  const ids = await p.evaluate(() => [...new Set([...document.querySelectorAll('#conds [data-c]')].map(b => b.dataset.c))]);
-  // The list pages; gather every id by turning through them.
-  const all = new Set(ids);
-  for (let i = 0; i < 12; i++) {
+  // My care: every area, then every condition inside it.
+  const areaIds = await p.evaluate(() => [...document.querySelectorAll('#conds [data-area]')].map(b => b.dataset.area));
+  for (let i = 0; i < 6; i++) {
     if (!(await visibleClick(p, '#conds .cv-list .pg-foot:not([hidden]) [data-next]:not([disabled])'))) break;
     await wait(p, 120);
+    (await p.evaluate(() => [...document.querySelectorAll('#conds [data-area]')].map(b => b.dataset.area))).forEach(x => areaIds.includes(x) || areaIds.push(x));
+  }
+  const all = new Set();
+  for (const a of areaIds) {
+    await p.evaluate(() => window.__careHome?.());
+    for (let i = 0; i < 6 && !(await p.locator(`#conds [data-area="${a}"]`).isVisible()); i++) {
+      if (!(await visibleClick(p, '#conds .cv-list .pg-foot:not([hidden]) [data-next]:not([disabled])'))) break;
+    }
+    if (!(await visibleClick(p, `#conds [data-area="${a}"]`))) continue;
+    await wait(p, 150);
+    await pages(p, vp, `care area ${a}`, wide ? '#conds .area-col' : '#conds');
     (await p.evaluate(() => [...document.querySelectorAll('#conds [data-c]')].map(b => b.dataset.c))).forEach(x => all.add(x));
+    for (let i = 0; i < 6; i++) {
+      if (!(await visibleClick(p, '#conds .area-list .pg-foot:not([hidden]) [data-next]:not([disabled])'))) break;
+      (await p.evaluate(() => [...document.querySelectorAll('#conds [data-c]')].map(b => b.dataset.c))).forEach(x => all.add(x));
+    }
   }
   const list = [...all].slice(0, QUICK ? 4 : 99);
   for (const id of list) {
@@ -192,7 +206,7 @@ async function conditionsWalk(p, vp, wide) {
         if (await visibleClick(p, '#conds [data-f="all"]')) await check(p, vp, `condition ${id} map, all`);
       }
     } else {
-      await pages(p, vp, `condition ${id}`, '#conds .cdetail .ccol:first-child');
+      await pages(p, vp, `condition ${id}`, '#conds .cond-col');
       if (await visibleClick(p, '#conds .mn')) await check(p, vp, `condition ${id}, a dot tapped`);
     }
   }

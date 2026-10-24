@@ -10,6 +10,7 @@ import { lastCheckin, scoreSeries, localDay, TZ } from './dipti-model.js';
 import { entitiesIn, related, sourcesFor, GRADE_LABEL } from './evidence.js';
 import { DOCTOR } from './persona.js';
 import { pager, autoPages } from './pager.js';
+import { todayLine } from './care-model.js';
 
 const PEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 import { openSheet } from './record.js';
@@ -60,9 +61,9 @@ export function renderDashboard(el, context) {
   // Each column: fixed cards, plus one card that pages when the window is short.
   root.innerHTML = `<div class="dash">
     <section class="col">
-      <div class="dash-hello"><h1>${you ? 'Hello Dipti' : `Hello ${esc(ctx.me().name || '')}`}</h1><p>${esc(date)}${next ? ` · <b>Next:</b> ${esc(next.with)}, ${esc(whenText(next.date, next.time))}` : ''}</p></div>
+      <div class="dash-hello"><p class="lbl">${esc(date)}${next ? ` · Next: ${esc(next.with)}, ${esc(whenText(next.date, next.time))}` : ''}</p><h1>${you ? 'Hello Dipti.' : `Hello ${esc(ctx.me().name || '')}.`}</h1><p class="lede">${esc(todayLine(canon))}</p></div>
       <article class="dcard flex prio-card">
-        <p class="kicker">${you ? 'Your' : "Dipti's"} priorities</p>
+        <p class="kicker">This week</p>
         <div class="dlist" data-list="prios"></div>
       </article>
       ${facts.length ? `<article class="dcard flex facts-card">
@@ -79,10 +80,10 @@ export function renderDashboard(el, context) {
 
     <section class="col">
       <article class="dcard flex">
-        <div class="dc-head"><p class="kicker">Medicines now</p>${meds.differ ? `<span class="soft small">${meds.differ} to confirm with the prescriber</span>` : ''}</div>
+        <div class="dc-head"><p class="kicker">Medicines now</p>${meds.differ ? '<span class="soft small">A few to confirm with the prescriber</span>' : ''}</div>
         <div class="medrow medhead"><span>Medicine</span><span>Dose and time</span><span>For</span></div>
         <div class="dlist" data-list="meds"></div>
-        ${meds.stopped.length ? `<button class="link" data-more="medicines">${meds.stopped.length} stopped medicines ${CHEV}</button>` : ''}
+        ${meds.stopped.length ? `<button class="link" data-more="medicines">Medicines you have stopped ${CHEV}</button>` : ''}
       </article>
       <article class="dcard flex">
         <p class="kicker">Questions, by doctor</p>
@@ -96,7 +97,7 @@ export function renderDashboard(el, context) {
         <div class="dlist" data-list="results"></div>
       </article>
       <article class="dcard flex">
-        <p class="kicker">Things to clear up</p>
+        <p class="kicker">To tidy up <span class="soft small">· nothing urgent</span></p>
         <div class="dlist" data-list="gaps"></div>
       </article>
     </section>
@@ -104,16 +105,16 @@ export function renderDashboard(el, context) {
 
   const lists = {
     prios: pr.map((p, i) => `<button class="dp" data-p="${esc(p.id)}">
-      <span class="dp-top"><span class="prio-n">${i + 1}</span><b>${esc(p.title)}</b><i class="chip ${p.statusInfo.tone}">${esc(p.statusInfo.label)}</i></span>
-      ${p.nextStep ? `<span class="dp-next">${esc(p.nextStep)}</span>` : ''}
+      <span class="dp-top"><b>${esc(String(p.title).replace(/\s*\(.*\)\s*$/, ''))}</b><i class="ctag ${p.status === 'waiting' ? 'wait' : p.status === 'better' ? 'ok' : 'hand'}">${p.status === 'waiting' ? 'Waiting' : p.status === 'better' ? 'Getting better' : 'In hand'}</i></span>
+      ${p.nextStep ? `<span class="dp-next">${i === 0 ? '<span class="lbl">Today\'s one step</span> ' : ''}${esc(p.nextStep)}</span>` : ''}
     </button>`),
     meds: meds.current.map((m, i) => `<button class="medrow" data-m="${i}"><span><b>${esc(m.name)}</b>${m.generic ? `<small>${esc(m.generic)}</small>` : ''}</span><span>${esc(`${m.dose} ${m.timing}`.trim())}${m.differs ? `<small class="ask">Prescription: ${esc(m.rx || 'not on it')}</small>` : ''}</span><span>${esc(String(m.purpose || '').split(/[.;]\s/)[0])}</span></button>`),
-    qs: qg.map(g => `<button class="dq" data-q="${esc(g.who)}"><b>${esc(g.who)}</b><span>${esc(g.questions[0].question)}</span>${g.questions.length > 1 ? `<small>+${g.questions.length - 1} more</small>` : ''}</button>`),
+    qs: qg.map(g => `<button class="dq" data-q="${esc(g.who)}"><b>${esc(g.who)}</b><span>${esc(g.questions[0].question)}</span>${g.questions.length > 1 ? '<small>and more for later</small>' : ''}</button>`),
     results: cards.map(c => `<button class="tr" data-r="${c.key}">
       <span class="tr-l"><b>${esc(c.def.short)}</b><small>${esc(fmtDate(c.last.date, { year: true }))}</small></span>
       ${spark(c.points, { band: c.last.range })}
       <span class="tr-v"><b>${c.last.below ? '<' : ''}${c.last.value}</b><small>${esc(c.def.unit)}</small></span>
-      <i class="chip ${cardLabel(c).tone}">${esc(cardLabel(c).text || '–')}</i>
+      <i class="ctag ${['ok', 'accent'].includes(cardLabel(c).tone) ? 'ok' : 'quiet'}">${esc(cardLabel(c).text || 'One reading')}</i>
     </button>`),
   };
   lists.facts = facts.map((f, i) => `<button class="dq" data-fact="${i}"><span>${esc(f.question)}</span>${f.says ? `<small>${esc(f.says)}</small>` : ''}</button>`);

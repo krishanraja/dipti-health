@@ -9,7 +9,7 @@ test('groups: long-term, being watched, settled; older status words still work',
   assert.equal(groupOf('long-term'), 'long-term');
   assert.equal(groupOf('active'), 'watching');
   assert.equal(groupOf('resolved'), 'settled');
-  assert.deepEqual(conditionList(canon).map(g => g.label), ['Long-term', 'Being watched', 'Settled']);
+  assert.deepEqual(conditionList(canon).map(g => g.label), ['Long-term', 'Looked after', 'Settled']);
 });
 
 test('short name is the first AlsoCalled name, else the name without brackets', () => {
@@ -55,8 +55,30 @@ test('zoom: one condition with its medicines, results, doctor, questions and pri
 test('a condition without a Key still opens, with no links', () => {
   const c = { ...canon, conditions: [{ name: 'Typed in by hand', status: '' }] };
   const [g] = conditionList(c);
-  assert.equal(g.label, 'Being watched');
+  assert.equal(g.label, 'Looked after');
   const z = zoom(c, g.items[0].id);
   assert.equal(z.short, 'Typed in by hand');
   assert.equal(z.links.length, 0);
+});
+
+test('care areas: every condition in exactly one area; only live priorities are "now"', async () => {
+  const { careAreas, todayLine } = await import('../public/js/care-model.js');
+  const c = {
+    conditions: [
+      { key: 'COND_A', name: 'Tooth pain', status: 'watching', aliases: 'Tooth pain' },
+      { key: 'COND_B', name: 'Fatty liver', status: 'watching' },
+      { key: 'COND_C', name: 'Vitamin D low', status: 'settled' },
+      { key: 'COND_D', name: 'Insomnia', status: 'long-term' },
+    ],
+    priorities: [{ id: 'P1', rank: '1', title: 'Tooth pain', status: 'now', nextStep: 'Book a specialist' }, { id: 'P2', rank: '2', title: 'Old', status: 'done' }],
+    clinicians: [{ name: 'Dr Lab', role: 'Lab', owns: 'Fatty liver tests' }],
+  };
+  const areas = careAreas(c);
+  assert.equal(areas.flatMap(a => a.conditions).length, 4);
+  assert.deepEqual(areas.filter(a => a.now).map(a => a.id), ['teeth']);
+  assert.equal(areas[0].tag.text, 'In hand');
+  assert.equal(areas.find(a => a.id === 'gut').doctor, ''); // a lab never "looks after" her
+  assert.equal(areas.find(a => a.id === 'everyday').conditions[0].tag.text, 'Settled');
+  assert.equal(areas.find(a => a.id === 'mind').conditions[0].tag.text, 'Long-term');
+  assert.equal(todayLine(c), 'One thing is in hand this week. Everything else is known and looked after.');
 });

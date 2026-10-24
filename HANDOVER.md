@@ -1,5 +1,13 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-10-24 (night): calm by default (D38–D43)
+
+- [x] `public/js/care-model.js` (areas, tags, Today's line), tested in `test/conditions-model.test.js`.
+- [x] My care screens in `public/js/conditions.js`: areas, then an area, then a condition; wide is areas | area | condition.
+- [x] Today (`public/js/today.js`), overview (`public/js/dashboard.js`) and Record (`public/js/record.js`) rewritten around one step and words, not counts.
+- [x] Tokens and components at the end of `public/ds.css` ("Calm (v4)").
+- [ ] Watch how Dipti uses it for a week: which area she opens, whether she uses "Done it", and her feedback chips.
+
 ## 2026-10-24 (evening): input console, long notes, doctor notes
 
 - [x] Buttons v3 in `public/ds.css` (D32).

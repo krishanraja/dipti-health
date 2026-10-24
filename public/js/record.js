@@ -215,24 +215,28 @@ function render() {
   const gaps = openGaps(canon).length;
   const rc = resultCards(canon.testResults || []);
   const lastEv = historyEvents(canon)[0];
-  // more: up to three preview lines, shown on wide screens where there is room.
-  const tile = (go, h, big, sub, more = []) => `<button class="tile" data-go="${go}"><span class="tile-h">${esc(h)}</span><span class="tile-big ${String(big).length > 4 ? 'sm' : ''}">${esc(big)}</span><span class="tile-sub">${esc(sub)}</span>${more.length ? `<span class="tile-more">${more.slice(0, 3).map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}</button>`;
-  const qs = questionsByDoctor(canon).flatMap(g => g.questions.map(q => q.question));
+  // Words, not counts: a big number reads as a big problem. The preview
+  // lines (wide screens) show what is inside.
+  const tile = (go, h, title, sub, more = [], tone = '') => `<button class="tile ${tone}" data-go="${go}"><span class="tile-h">${esc(h)}</span><span class="tile-title">${esc(title)}</span><span class="tile-sub">${esc(sub)}</span>${more.length ? `<span class="tile-more">${more.slice(0, 3).map(x => `<span>${esc(x)}</span>`).join('')}</span>` : ''}</button>`;
+  const short = t => String(t || '').replace(/\s*\(.*\)\s*$/, '');
+  const qs = questionsByDoctor(canon);
   const ap = appointments(canon).upcoming;
   const latest = rc.slice().sort((a, b) => String(b.last?.date || '').localeCompare(String(a.last?.date || '')));
   const ev3 = historyEvents(canon).slice(0, 3);
+  const checked = m.current.map(x => x.checked).filter(Boolean).sort();
+  const n = nextAppointment(canon);
   root.innerHTML = `<div class="rec-home">
-    <div class="rec-head"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} record</h1><p>Everything in ${you() ? 'your' : 'her'} Sheet, in one place.</p></div>
+    <div class="rec-head"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} record</h1><p>Everything in ${you() ? 'your' : 'her'} Sheet, kept tidy.</p></div>
       <div class="rec-actions">${sheetUrl() ? `<a class="btn" href="${esc(sheetUrl())}" target="_blank" rel="noopener">${ICO.sheet}Open my Sheet</a>` : ''}<button class="btn" data-brief="">${ICO.share}Note for a doctor</button></div></div>
     <div class="tiles rec-tiles">
-      ${tile('priorities', 'Priorities', pr.length, pr[0] ? pr[0].title : 'none yet', pr.slice(1, 4).map(p => p.title))}
-      ${tile('medicines', 'Medicines', m.current.length, m.differ ? `${m.differ} to confirm` : 'all match', m.current.slice(0, 3).map(x => [x.name, x.dose].filter(Boolean).join(' · ')))}
-      ${tile('results', 'Results', rc.length, 'measures over time', latest.slice(0, 3).map(r => `${r.def.short}: ${r.last.below ? '<' : ''}${r.last.value} ${r.def.unit || ''}`.trim()))}
-      ${tile('questions', 'Questions', qn, 'for her doctors', qs.slice(0, 2))}
-      ${tile('gaps', 'To clear up', gaps, gaps ? 'open' : 'nothing open', openGaps(canon).slice(0, 2).map(g => g.gap))}
-      ${tile('doctors', 'Doctors', (canon.clinicians || []).length, 'who looks after what', (canon.clinicians || []).slice(0, 3).map(c => [c.name, c.owns].filter(Boolean).join(' · ')))}
-      ${(() => { const n = nextAppointment(canon); return tile('appointments', 'Appointments', ap.length, n ? `next ${n.with}` : 'none booked', ap.slice(0, 3).map(a => `${whenText(a.date, a.time)} · ${a.with}`)); })()}
-      ${tile('history', 'History', lastEv ? lastEv.date.replace(/ \d{4}$/, '') : 'None', 'latest entry', ev3.map(e => `${e.title}${e.detail ? ': ' + e.detail : ''}`))}
+      ${tile('priorities', 'Priorities', pr.length ? "What's in hand" : 'Nothing open', pr[0] ? short(pr[0].title) : 'All sorted', pr.slice(1, 4).map(p => short(p.title)))}
+      ${tile('medicines', 'Medicines', 'Your daily list', m.differ ? 'A few to confirm' : checked.length ? `Checked ${fmtDate(checked[checked.length - 1])}` : 'Kept up to date', m.current.slice(0, 3).map(x => [x.name, x.dose].filter(Boolean).join(' · ')))}
+      ${tile('results', 'Results', 'Blood tests', latest[0] ? `Latest ${fmtDate(latest[0].last.date)}` : 'None yet', latest.slice(0, 3).map(r => r.def.short))}
+      ${tile('questions', 'Questions', 'Ready for visits', qs[0] ? `${qs[0].questions.length > 2 ? 'Some' : qs[0].questions.length} for ${short(qs[0].who)}` : 'None yet', qs.slice(0, 3).map(g => short(g.who)))}
+      ${tile('appointments', 'Appointments', n ? short(n.with) : 'Nothing booked', n ? whenText(n.date, n.time) : 'Add one with +', ap.slice(1, 4).map(a => `${whenText(a.date, a.time)} · ${a.with}`))}
+      ${tile('doctors', 'Doctors', 'Your team', 'Who looks after what', (canon.clinicians || []).slice(0, 3).map(c => short(c.name)))}
+      ${tile('history', 'History', "What you've added", lastEv ? `Latest ${lastEv.date.replace(/ \d{4}$/, '')}` : 'Nothing yet', ev3.map(e => e.title))}
+      ${tile('gaps', 'To tidy up', gaps ? 'A few details' : 'All tidy', gaps ? 'For your doctors to confirm. Nothing urgent.' : 'Nothing to confirm', [], 'quiet-tile')}
     </div>
   </div>`.replace('for her doctors', you() ? 'for your doctors' : "for Dipti's doctors");
   root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => (b.dataset.go === 'conditions' ? ctx.go('conditions') : recordSpoke(b.dataset.go)));
