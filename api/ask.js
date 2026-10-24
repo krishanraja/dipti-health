@@ -200,7 +200,8 @@ export default async function handler(req, res) {
   const image = body.image || null;
   const bad = checkImage(image);
   if (bad) return res.status(400).json({ ok: false, error: bad });
-  const message = str(body.message ?? body.concern, 2000) || (image ? 'Here is a photo. What does it show?' : '');
+  // Long enough for a spoken or typed update from her journal.
+  const message = str(body.message ?? body.concern, 12000) || (image ? 'Here is a photo. What does it show?' : '');
   const by = byFor(role, body.by);
   const rid = String(body.rid || '').replace(/[^a-z0-9]/gi, '').slice(0, 24) || Math.random().toString(36).slice(2, 12);
   const threadId = String(body.threadId || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
@@ -272,7 +273,7 @@ export default async function handler(req, res) {
       try {
         // A short row in Notes, the full reply in _Chats (by request id, so a
         // dropped connection can recover it). The rid makes a retry a no-op.
-        const summary = `CONCERN: ${image ? '[photo] ' : ''}${message}\nURGENCY: ${answer.urgency}\nANSWER: ${answer.reply}\nRID: ${rid}`;
+        const summary = `CONCERN: ${image ? '[photo] ' : ''}${message.length > 600 ? message.slice(0, 600).replace(/\s+\S*$/, '') + '…' : message}\nURGENCY: ${answer.urgency}\nANSWER: ${answer.reply}\nRID: ${rid}`;
         const data = JSON.stringify({ answer, source, threadId });
         try {
           await write('chat', { rid, threadId, text: summary.slice(0, 5000), data }, by, { timeoutMs: 10000, opId: `chat-${rid}` });

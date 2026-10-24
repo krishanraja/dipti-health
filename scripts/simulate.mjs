@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { TAGS, noteText, symptomLevel, noteData, repeatAsk } from '../public/js/dipti-model.js';
 import { bank, bankText, bankSize, factNote } from '../public/js/knowledge-bank.js';
 import { historyEvents, priorities, medicines } from '../public/js/record-model.js';
-import { briefText } from '../public/js/brief.js';
+import { doctorNote } from '../public/js/brief.js';
 import { patientContext } from '../api/ask.js';
 import { fixture } from './fixture.mjs';
 
@@ -266,9 +266,11 @@ check('Priorities and medicines read back for the screens', () => {
   assert.equal(priorities(canon)[0].id, 'P1');
   assert.equal(medicines(canon).differ, 1); // Medicine C was stopped by Krish
 });
-check('A summary for the dentist carries only the dentist\'s questions', () => {
-  const t = briefText(canon, { doctor: 'Dr Example' });
-  assert.match(t, /Can the endodontist see her this week\?/);
+check('A note for the dentist carries only the dentist\'s questions, two at most', () => {
+  const t = doctorNote(canon, { doctor: 'Dr Example' });
+  assert.ok((t.match(/^\d\. /gm) || []).length <= 2);
+  assert.match(t, /^Hello Dr Example,/);
+  assert.match(t, /Would a crown protect the tooth\?/);
   assert.doesNotMatch(t, /stool/i);
 });
 const grew = { before: bankSize(bankBefore), after: bankSize(b) };

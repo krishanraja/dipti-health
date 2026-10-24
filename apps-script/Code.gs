@@ -41,9 +41,14 @@ var TABS = {
   // full (for recovering a reply a phone missed); _Ops remembers each write
   // the app made, so a write sent twice is only applied once.
   _Chats:        { mode: 'append', cols: [['Rid', 'rid'], ['TimestampUTC', 'ts'], ['By', 'by'], ['ThreadId', 'threadId'], ['Data', 'data']] },
-  _Ops:          { mode: 'append', cols: [['OpId', 'opId'], ['TimestampUTC', 'ts'], ['Action', 'action'], ['Result', 'result']] }
+  _Ops:          { mode: 'append', cols: [['OpId', 'opId'], ['TimestampUTC', 'ts'], ['Action', 'action'], ['Result', 'result']] },
+  // _Journal holds each long note in full; Notes keeps its opening lines.
+  _Journal:      { mode: 'append', cols: [['Jid', 'jid'], ['TimestampUTC', 'ts'], ['By', 'by'], ['Text', 'text']] }
 };
 var OPS_KEEP = 2000;
+// Shown in the app's settings, so it is easy to see this script is current.
+var VERSION = '2026-10-24b';
+var JOURNAL_PREVIEW = 400;
 
 var APPT_STATUS = ['booked', 'done', 'moved', 'cancelled'];
 // Tabs whose rows the fact checker asks about, and the column that names a row.
@@ -391,6 +396,23 @@ var ACTIONS = {
 
   // One chat exchange: a short row in Notes (what she asked, how urgent, the
   // reply) and the full reply data in _Chats, so reads stay small.
+  // A long note, typed or spoken. The full text goes to _Journal; Notes gets
+  // the opening lines and the JID, so the Sheet stays readable and reads small.
+  journal: function (p, by) {
+    var bad = need(p, ['jid', 'text']);
+    if (bad) return err(bad);
+    var tsU = nowUTC(), text = String(p.text).slice(0, 45000);
+    var head = text.length > JOURNAL_PREVIEW ? text.slice(0, JOURNAL_PREVIEW).replace(/\s+\S*$/, '') + '…' : text;
+    var jt = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_Journal');
+    if (jt) {
+      appendObj('_Journal', { jid: p.jid, ts: tsU, by: by, text: text });
+      appendObj('Notes', { tsUTC: tsU, by: by, text: head + (text.length > head.length ? '\nJID: ' + p.jid : ''), tag: 'journal' });
+    } else {
+      appendObj('Notes', { tsUTC: tsU, by: by, text: text, tag: 'journal' });
+    }
+    return json({ ok: true, timestampUTC: tsU, chars: text.length });
+  },
+
   chat: function (p, by) {
     var bad = need(p, ['rid', 'text']);
     if (bad) return err(bad);
@@ -496,9 +518,10 @@ function doGet(e) {
   try {
     var p = (e && e.parameter) || {};
     if (p.secret !== appSecret()) return err('bad secret');
-    if (p.action === 'ping') return json({ ok: true, time: nowUTC() });
+    if (p.action === 'ping') return json({ ok: true, time: nowUTC(), version: VERSION, actions: Object.keys(ACTIONS) });
     if (p.action === 'read') return json(readCanon());
     if (p.action === 'answer') return json(readAnswer(String(p.rid || '')));
+    if (p.action === 'journal') return json(readJournal(String(p.jid || '')));
     return err('unknown action');
   } catch (ex) {
     return err('server error: ' + ex.message);
@@ -556,6 +579,13 @@ function recordOp(opId, action, res) {
 }
 
 // The full reply for one chat, by its request id.
+function readJournal(jid) {
+  if (!jid) return { ok: false, error: 'missing jid' };
+  var rows = rowObjects('_Journal');
+  for (var i = rows.length - 1; i >= 0; i--) if (rows[i].jid === jid) return { ok: true, jid: jid, text: rows[i].text, ts: rows[i].ts, by: rows[i].by };
+  return { ok: false, error: 'not found' };
+}
+
 function readAnswer(rid) {
   if (!rid) return { ok: false, error: 'missing rid' };
   var chats = rowObjects('_Chats');

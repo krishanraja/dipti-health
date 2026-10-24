@@ -74,14 +74,14 @@ ul.plain { padding-left: 1.1em; display: grid; gap: .35em; line-height: 1.35; }
 .seg4 button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .brief .pg-body { background: var(--bg); border-radius: 14px; padding: 12px 14px; margin: 0; --pg-gap: 8px; }
 .brief pre { white-space: pre-wrap; font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
-a.btn { display: grid; place-items: center; text-decoration: none; color: var(--ink); }
+a.btn { text-decoration: none; color: var(--ink); }
 
 /* ---------- record ---------- */
 .rec-home { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: .6em; font-size: 17px; }
 .rec-tiles { grid-template-rows: repeat(4, 1fr); flex: 1; min-height: 0; }
 .rec-tiles .tile-big { font-size: 1.7em; }
 .rec-tiles .tile-sub { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-.sheet-btn { background: var(--accent-soft) !important; color: var(--accent) !important; font-weight: 700; }
+
 .spoke { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
 .spoke-list { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .spoke > .sheet-tab { flex: none; min-height: 40px; }

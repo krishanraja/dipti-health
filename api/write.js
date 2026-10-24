@@ -12,7 +12,10 @@ export default async function handler(req, res) {
     const out = await write(action, payload || {}, byFor(role, by), { opId: String(opId || '').slice(0, 64) });
     return res.status(200).json(out);
   } catch (e) {
-    // 422: the Sheet refused this write; retrying will not help. 502: try again later.
-    return res.status(e.rejected ? 422 : 502).json({ ok: false, error: e.message, code: e.code || 'SHEET_ERROR', rejected: Boolean(e.rejected) });
+    // 422: the Sheet refused this write; retrying will not help.
+    // 409: the Sheet's script is older than the app; it will work once updated.
+    // 502: the Sheet could not be reached; try again later.
+    const status = e.rejected ? 422 : e.outdated ? 409 : 502;
+    return res.status(status).json({ ok: false, error: e.message, code: e.outdated ? 'SHEET_OUTDATED' : e.code || 'SHEET_ERROR', rejected: Boolean(e.rejected), outdated: Boolean(e.outdated) });
   }
 }

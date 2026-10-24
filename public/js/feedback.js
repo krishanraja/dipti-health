@@ -23,7 +23,9 @@ const PROMPT = {
 };
 
 let lastScreen = 'today';
-export function mountFeedback(el, context) { root = el; ctx = context; render(); }
+// Every page load starts on step 1. Unsent words are kept and come back
+// when she picks a chip again.
+export function mountFeedback(el, context) { root = el; ctx = context; sent = false; draft.set({ ...draft.get(), chip: '' }); render(); }
 export function feedbackFrom(screen) { if (screen && screen !== 'feedback') lastScreen = screen; }
 
 function render() {
@@ -32,7 +34,7 @@ function render() {
   if (sent) {
     root.innerHTML = `<div class="fb fb-done">
       <div class="fb-tick" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></div>
-      <h1>Thank you.</h1><p>Krish reads every one.</p>
+      <h1>Thank you.</h1><p>${sent === 'sent' ? 'Krish reads every one.' : sent === 'outdated' ? 'Kept on this device. The Sheet needs its latest script before it can take it.' : 'Kept on this device. It will send when you are online.'}</p>
       <button class="btn tinted" data-again>Send another</button></div>`;
     root.querySelector('[data-again]').onclick = () => { sent = false; render(); };
     return;
@@ -70,8 +72,7 @@ function render() {
     const r = await ctx.save('feedback', { chip, text: ta.value.trim(), screen: lastScreen });
     if (!r.ok && !r.queued) { e.target.disabled = false; return; }
     draft.clear();
-    sent = true;
+    sent = r.ok ? 'sent' : r.outdated ? 'outdated' : 'queued';
     render();
-    if (!r.ok && r.queued) ctx.toast('Saved. It will send when you are online.');
   };
 }

@@ -9,11 +9,13 @@
   - `POST /api/login {persona: 'dipti'|'family'}` switches a logged-in device. `DELETE /api/login` logs out.
 - `GET /api/session` returns `{authed, role, sheetConfigured, ai, people}`, or 401 when not logged in.
 - `GET /api/canon` returns the whole Sheet in the shape below. Chat notes come without their stored DATA.
-- `POST /api/write {action, payload, by, opId}` proxies one Sheet write. A Dipti session is always written as "Dipti". `opId` is made once per write and kept across retries. Returns 422 `{rejected: true}` when the Sheet refuses the content (do not retry) and 502 when the Sheet cannot be reached (retry later).
+- `POST /api/write {action, payload, by, opId}` proxies one Sheet write. A Dipti session is always written as "Dipti". `opId` is made once per write and kept across retries. Returns 422 `{rejected: true}` when the Sheet refuses the content (do not retry), 409 `{outdated: true}` when the Sheet's script is older than the app (keep it queued until the script is updated), and 502 when the Sheet cannot be reached (retry later).
 - `POST /api/ask {message, thread[{role, text}], threadId, rid, by, image?{data, type}}` streams NDJSON:
   - `stage`, then `delta` events with the reply text, then one `answer`, then `learned`.
   - `answer` is `{urgency, reply, doNow[], watchFor[], askTheDoctor[], evidence[{point, ref, title, url, grade}], usedFromRecord[], replies[], learned[], results[], limits}`.
 - `GET /api/answer?rid=` recovers a reply the device missed.
+- `POST /api/note {draft, parts}` returns `{text}`: a warmer wording of her note to a doctor, or the draft unchanged if the rewrite added anything (`lib/note.js`).
+- `GET /api/status` returns `{ok, version, current, missing[]}`: whether the Sheet's script is the one this app expects.
 - `POST /api/photo {image}` returns `{kind, summary, unreadable, results[{date, test, result, range, lab, notes, duplicate, dateGuessed}]}`. It saves nothing.
 
 ## Sheet API (Apps Script, server to server only)
@@ -24,7 +26,8 @@
 
 Endpoints:
 
-- `GET ?secret=..&action=ping|read`
+- `GET ?secret=..&action=ping|read`. `ping` returns `{version, actions[]}`.
+- `GET ?secret=..&action=journal&jid=` returns the full text of one long note.
 - `GET ?secret=..&action=answer&rid=` returns `{ok, data}` for one saved chat reply (`_Chats` first, then old Notes DATA).
 - `POST` (`Content-Type: text/plain`) `{secret, action, by, payload, opId?}`. Every POST runs under a script lock. With an `opId` already in `_Ops`, the stored result comes back with `duplicate: true` and nothing is written again. Actions:
   - `checkin {answers:{tooth 0-10, abdomen 0-10, fatigue 0-10, sleep good|ok|poor, bowels normal|loose|diarrhoea|constipated, mood ok|low|very-low}, notes?}`. Returns a verdict: `Steady`, `Changed` or `Act-today`. `Act-today` means diarrhoea (steroid sick-day rules) or pain of 9 or more.
@@ -40,10 +43,11 @@ Endpoints:
   - `profile {key, value}`
   - `condition {name, status long-term|watching|settled?, notes?, since?, evidence?, aliases?, plain?}`
   - `medication {name, generic?, dose?, timing?, rx?, purpose?, status current|stopped|check?}`
+  - `journal {jid, text}`: a long note. Full text (up to 45,000 characters) to `_Journal` (`Jid, TimestampUTC, By, Text`); Notes gets the first 400 characters and `JID: …`, tag `journal`.
   - `feedback {chip, text?, screen?}`: one row in `Feedback` (`TimestampUTC, By, Chip, Text, Screen, Status`), status `new`.
   - `chat {rid, threadId?, text, data}`: server only (`/api/ask`). Full data to `_Chats` (`Rid, TimestampUTC, By, ThreadId, Data`); a short concern row to Notes.
 
-Hidden tabs: `_Ops` (`OpId, TimestampUTC, Action, Result`, last 2,000 kept) and `_Chats`. Neither is returned by `read`.
+Hidden tabs: `_Ops` (`OpId, TimestampUTC, Action, Result`, last 2,000 kept), `_Chats` and `_Journal`. Neither is returned by `read`.
 
 Every edit to an overwrite tab is written to `Changelog` with who made it.
 

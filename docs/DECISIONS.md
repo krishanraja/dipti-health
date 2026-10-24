@@ -2,6 +2,17 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
+## 2026-10-24 (evening): one input console, notes in her voice, buttons v3
+
+| # | Decision | By | Why / carry-forward |
+|---|---|---|---|
+| D32 | Buttons have three tiers: primary (solid accent, one per surface), secondary (`.btn`: raised surface, hairline edge, ink text, an icon where it helps) and quiet (text). Labels never wrap | Krish (the ask), Claude (the system) | Mixed tinted and grey buttons that wrapped read as unfinished. Plain `.btn` is the secondary, so every button moved at once |
+| D33 | One input console for everything she adds: a round + on Today, Record and Conditions (phones), "+ Add" in the top bar (wide). The long note leads, then how I feel, a symptom, a medicine change, a test result (photo or typed), an appointment, a question, and tablets as a one-tap row | Krish (the + placement), Claude (the contents) | Inputs were scattered, and medicine changes or typed results could only go through chat. `public/js/console.js` |
+| D34 | Long notes: "Write or talk it through" takes up to 20,000 characters, typed, spoken or dictated (Wispr Flow), with a draft kept on the device. The full text goes to a hidden `_Journal` tab; Notes keeps the first 400 characters. After saving, Ellie can pick out what should change, and she confirms each one | Krish (the ask), Claude (storage) | Same pattern as `_Chats`, so reads stay small. The editor is the second place allowed to scroll, after the chat thread |
+| D35 | A note to a doctor is written by her, in her voice: a greeting, one or two sentences on what it is about, the steroid if she takes one, at most two questions, her name. One tap copies it. Ellie may make the wording warmer but cannot add a number, a question or a fact (`lib/note.js` checks it) | Krish | Replaces the long "health summary", which read as a record dump with up to ten questions |
+| D36 | Feedback starts on step 1 after every reload; unsent words come back when she picks a chip again. "Thank you" shows only when the Sheet has it | Krish | |
+| D37 | The Sheet script reports its version (`ping`). A write the old script does not know returns 409 and stays queued, never shown as sent; settings shows whether the script is up to date | Claude, after Krish asked that feedback logs correctly | Bump `VERSION` in Code.gs and `SHEET_VERSION` in `api/status.js` together (a test checks they match) |
+
 ## 2026-10-24: design system v2, map on phones, Sheet integrity, Feedback
 
 | # | Decision | By | Why / carry-forward |

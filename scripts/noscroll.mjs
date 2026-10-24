@@ -1,7 +1,8 @@
 // No-scroll proof. Walks every screen, list page, sheet, panel and flow at
 // phone, tablet and desktop sizes (portrait and landscape) and fails if
-// anything scrolls, is cut off, or sits outside the window. The chat thread
-// is the one place allowed to scroll.
+// anything scrolls, is cut off, or sits outside the window. Two places may
+// scroll: the chat thread, and the long-note editor (a spoken update can run
+// for pages).
 //
 // Usage: node scripts/noscroll.mjs <base url> [shots dir] [--quick] [--only=320x568,844x390]
 // Run it against the dev server: MOCK_SHEET=1 MOCK_AI=1 node scripts/dev-server.mjs
@@ -32,7 +33,7 @@ function audit() {
   const layer = [...document.querySelectorAll('.flow, .sheet-wrap, .panel-wrap')].pop();
   const visible = el => { for (let e = el; e; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden') return false; } return true; };
   for (const el of (layer || document.body).querySelectorAll('*')) {
-    if (el.closest('.thread, .suggest, .sr, svg, template')) continue;
+    if (el.closest('.thread, .suggest, .sr, svg, template, .jbox')) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 2 || r.height < 2) continue;
     const cs = getComputedStyle(el);
@@ -131,6 +132,8 @@ async function phoneRun(p, vp) {
   if (await visibleClick(p, '.view:not([hidden]) .back[data-home]')) await wait(p, 150);
   await pages(p, vp, 'conditions list');
   await conditionsWalk(p, vp, false);
+  await nav('today');
+  await consoleWalk(p, vp, () => visibleClick(p, '#addBtn'));
   await nav('ask'); await check(p, vp, 'ask');
   await feedbackWalk(p, vp, nav);
   await nav('today');
@@ -209,6 +212,37 @@ async function feedbackWalk(p, vp, go) {
   await visibleClick(p, '#fb [data-again]');
 }
 
+// The input console and every entry in it.
+async function consoleWalk(p, vp, open) {
+  const back = () => visibleClick(p, '.flow [data-back]');
+  if (!(await open())) { failures.push(`${vp.join('x')} no way to open the console`); return; }
+  await check(p, vp, 'console');
+  if (await visibleClick(p, '.flow [data-c="med"]')) {
+    await pages(p, vp, 'console: which medicine', '.flow');
+    if (await visibleClick(p, '.flow [data-m]:not([data-m=""])')) { await check(p, vp, 'console: what changed');
+      if (await visibleClick(p, '.flow [data-ch="dose"]')) { await check(p, vp, 'console: new dose'); await back(); }
+      await back(); }
+    if (await visibleClick(p, '.flow .pg-foot:not([hidden]) [data-next]:not([disabled])')) await wait(p, 150);
+    if (await visibleClick(p, '.flow [data-m=""]')) { await check(p, vp, 'console: a new medicine'); await back(); }
+    await back();
+  }
+  if (await visibleClick(p, '.flow [data-c="result"]')) {
+    await check(p, vp, 'console: a test result');
+    if (await visibleClick(p, '.flow [data-r="type"]')) { await check(p, vp, 'console: type a result');
+      await p.fill('#rTest', 'HbA1c'); await p.fill('#rVal', '5.6 %');
+      if (await visibleClick(p, '.flow [data-save]')) { await wait(p, 600); await check(p, vp, 'console: saved'); await visibleClick(p, '.flow [data-again]'); }
+    }
+  }
+  if (await visibleClick(p, '.flow [data-c="question"]')) { await check(p, vp, 'console: a question'); await back(); }
+  if (await visibleClick(p, '.flow [data-c="journal"]')) {
+    await check(p, vp, 'console: long note');
+    await p.fill('#jText', 'Woke up tired and the tooth throbbed all morning. '.repeat(80));
+    await check(p, vp, 'console: long note, very long');
+    if (await visibleClick(p, '.flow [data-save]')) { await wait(p, 600); await check(p, vp, 'console: long note saved'); }
+  }
+  await closeLayer(p);
+}
+
 async function layers(p, vp) {
   if (await visibleClick(p, '#gearBtn')) { await check(p, vp, 'settings sheet'); await closeLayer(p); }
   if (await visibleClick(p, '#shareBtn')) {
@@ -234,6 +268,7 @@ async function wideRun(p, vp) {
   }
   await tab('conditions'); await check(p, vp, 'conditions');
   await conditionsWalk(p, vp, true);
+  await consoleWalk(p, vp, () => visibleClick(p, '#addTop'));
   await tab('ask'); await check(p, vp, 'ask');
   await feedbackWalk(p, vp, tab);
   await tab('today');

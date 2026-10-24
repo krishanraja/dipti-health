@@ -12,10 +12,17 @@ let ctx, root, flowOpen = false;
 const $ = (s, el = root) => el.querySelector(s);
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+export const ICO = {
+  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-7l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 3v18"/></svg>',
+  share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+};
 export const MIC = '<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-const CAM = '<svg viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>';
-const PILL = '<svg viewBox="0 0 24 24"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.2 8l5.6 8"/></svg>';
-const PLUS = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+export const CAM = '<svg viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.4-2h5.8l1.4 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>';
+export const PILL = '<svg viewBox="0 0 24 24"><rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-35 12 12)"/><path d="M9.2 8l5.6 8"/></svg>';
+export const PLUS = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
 
 export function mountToday(el, context) { root = el; ctx = context; render(); }
 export function refreshToday() { if (root && !flowOpen) render(); }
@@ -35,7 +42,6 @@ function render() {
   const ci = lastCheckin(canon);
   const day = localDay(new Date());
   const checkedToday = ci && localDay(ci.ts) === day;
-  const medsToday = (canon.notes || []).some(n => n.tag === TAGS.meds && localDay(n.tsUTC) === day);
   const hour = +new Date().toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: TZ });
   const hello = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
@@ -54,22 +60,14 @@ function render() {
       ? `<button class="kc checkin done" data-check><span><small>Today's check-in ✓</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
       : `<button class="kc checkin" data-check><span><small>30 seconds</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
     ${facts.length ? `<button class="kc facts" data-facts><span><small>Still right? · ${facts.length} quick check${facts.length === 1 ? '' : 's'}</small><b>${esc(facts[0].question)}</b></span>${CHEV}</button>` : ''}
-    <div class="quick">
-      <button class="qk" data-log>${PLUS}<span>Log a symptom</span></button>
-      <button class="qk" data-photo>${CAM}<span>Photo of a result</span></button>
-      <button class="qk ${medsToday ? 'on' : ''}" data-meds>${PILL}<span>${medsToday ? 'Tablets ✓' : 'Tablets taken'}</span></button>
-    </div>
   </div>`;
   root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openPriority(b.dataset.p));
   $('[data-check]').onclick = startCheckin;
-  $('[data-log]').onclick = logSymptom;
-  $('[data-photo]').onclick = () => ctx.addPhoto();
-  $('[data-meds]').onclick = tablets;
   root.querySelector('[data-facts]')?.addEventListener('click', () => factFlow(facts));
   requestAnimationFrame(() => ctx.fit($('.fit')));
 }
 
-async function tablets() {
+export async function tablets() {
   const day = localDay(new Date());
   const canon = ctx.canon() || {};
   if ((canon.notes || []).some(n => n.tag === TAGS.meds && localDay(n.tsUTC) === day)) { ctx.toast('Already ticked today ✓'); return; }
@@ -94,7 +92,7 @@ export function openPriority(id) {
       ${qs.length ? `<p class="kicker" data-keep>To ask ${esc(p.askWhom)}</p>${qs.map(q => `<p class="qline dotq">${esc(q.question)}</p>`).join('')}` : ''}
     </div>
     <div class="sheet-foot"><p class="kicker">How is it going?</p><div class="choose" role="group" aria-label="How is it going?">${Object.entries(STATUS).map(([k, v]) => `<button class="st-${k}" data-st="${k}" aria-pressed="${p.status === k}"><i></i>${esc(v.label)}</button>`).join('')}</div>
-    <div class="row"><button class="btn tinted" data-edit>Change next step</button><button class="btn" data-ask>Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
+    <div class="row"><button class="btn" data-edit>${ICO.edit}Edit step</button><button class="btn" data-ask>${ICO.chat}Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
     sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
       if (b.dataset.st === p.status) return;
       sheet.querySelectorAll('[data-st]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -126,7 +124,7 @@ async function savePriority(canon, p, change) {
 }
 
 /* ---------- full-screen flows (check-in, log) ---------- */
-function flow(html, mount) {
+export function flow(html, mount) {
   flowOpen = true;
   let layer = document.querySelector('.flow');
   if (!layer) { layer = document.createElement('div'); layer.className = 'flow'; document.body.appendChild(layer); }
@@ -134,8 +132,8 @@ function flow(html, mount) {
   mount?.(layer);
   layer.querySelector('[data-x]')?.addEventListener('click', closeFlow);
 }
-function closeFlow() { document.querySelector('.flow')?.remove(); flowOpen = false; render(); }
-const head = (step, total) => `<div class="flow-top"><button class="back" data-back aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>Back</button>${total ? `<span>${step} of ${total}</span>` : ''}<button class="icon-btn" data-x aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+export function closeFlow() { document.querySelector('.flow')?.remove(); flowOpen = false; render(); }
+export const head = (step, total) => `<div class="flow-top"><button class="back" data-back aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>Back</button>${total ? `<span>${step} of ${total}</span>` : ''}<button class="icon-btn" data-x aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
 
 const SCORE_QS = [
   ['tooth', 'Tooth pain today', 'None', 'Worst ever'],
@@ -206,7 +204,7 @@ function checkinResult(verdict, a, ok) {
   flow(`<section class="kc level ${lvl}"><h1>${esc(title)}</h1><p>${esc(body)}</p>
     ${lvl === 'urgent' ? `<div class="who">${c.lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>` : ''}
     <p class="meta">${ok ? 'Saved to your Sheet.' : 'Saved on this device. It will send when you are online.'}</p></section>
-    <div class="row"><button class="btn" data-ask>Talk it through</button><button class="btn primary grow" data-x>Done</button></div>`, layer => {
+    <div class="row"><button class="btn" data-ask>${ICO.chat}Talk it through</button><button class="btn primary grow" data-x>Done</button></div>`, layer => {
     layer.querySelector('[data-ask]').onclick = () => { closeFlow(); ctx.openAsk(`I just checked in: tooth ${a.tooth}, tummy ${a.abdomen}, tiredness ${a.fatigue}, sleep ${a.sleep}. Anything I should do today?`); };
   });
 }
@@ -249,7 +247,7 @@ function logResult(log, ok) {
     ${lvl === 'urgent' || lvl === 'emergency' ? `<div class="who">${c.lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>` : ''}
     ${lvl === 'emergency' ? '<div class="row"><a class="btn sos" href="tel:112">Call 112</a><a class="btn sos" href="tel:108">Ambulance 108</a></div>' : ''}
     <p class="meta">${ok ? 'Saved to your record.' : 'Saved on this device. It will send when you are online.'}</p></section>
-    <div class="row"><button class="btn" data-ask>Ask ${esc(DOCTOR.name)}</button><button class="btn primary grow" data-x>Done</button></div>`, l => {
+    <div class="row"><button class="btn" data-ask>${ICO.chat}Ask ${esc(DOCTOR.first)}</button><button class="btn primary grow" data-x>Done</button></div>`, l => {
     l.querySelector('[data-ask]').onclick = () => { closeFlow(); ctx.openAsk(`I just logged: ${SYMPTOMS.find(s => s.id === log.symptom).label.toLowerCase()}, ${log.severity}${log.note ? ', ' + log.note : ''}. What should I do?`); };
   });
 }

@@ -3,8 +3,9 @@
    - Three surface levels: page (--bg), card (--card), and on-card controls
      (--fill). A control never takes the colour of what it sits on, so it can
      never disappear, in light or dark mode.
-   - One button family: primary (accent, one per screen), tinted (accent on a
-     soft accent fill, the second choice), plain (neutral fill), quiet (text).
+   - Buttons have three tiers (v3): primary (solid accent, one per surface),
+     secondary (.btn: a raised surface with a hairline edge, ink text, an icon
+     where it helps) and quiet (text only). Labels never wrap.
    - Choices look like choices: a ring and a check when chosen, never a
      barely-different grey.
    - Layers (sheets, panels, flows) always show a way out: a close button,
@@ -20,6 +21,7 @@
   --ring: 0 0 0 2px var(--accent);
   --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px;
   --ease: cubic-bezier(.2, .8, .2, 1);
+  --edge: rgba(60, 60, 67, .18);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -32,6 +34,7 @@
     --toast-ink: #ffffff;
     --line: rgba(84, 84, 88, .6);
     --shadow: 0 0 0 .5px rgba(255, 255, 255, .06);
+    --edge: rgba(235, 235, 245, .16);
   }
 }
 
@@ -295,3 +298,186 @@
   .cdetail { grid-template-columns: 1fr 1.2fr; gap: 16px; padding: 16px; }
   .cside .crow-plain { display: none; }
 }
+
+/* ---------- buttons v3: primary, secondary, quiet ---------- */
+.btn {
+  min-height: 52px; padding: 0 18px; border-radius: 14px;
+  background: var(--raised); color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--edge), 0 1px 2px rgba(0, 0, 0, .04);
+  font: 600 16px/1 var(--sans); letter-spacing: -.01em;
+  display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.btn:active { background: var(--fill); transform: scale(.98); }
+.btn svg { width: 19px; height: 19px; stroke-width: 2; color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08), inset 0 -1px 0 rgba(0, 0, 0, .08); }
+.btn.primary svg { color: currentColor; }
+.btn.tinted { background: var(--raised); color: var(--ink); }
+.btn.ghost, .btn.quiet { background: transparent; box-shadow: none; color: var(--accent); }
+a.btn { display: inline-flex; text-decoration: none; }
+a.btn.primary { color: var(--accent-ink); }
+.sheet .btn:not(.primary):not(.ghost):not(.quiet), .flow .btn:not(.primary):not(.ghost):not(.quiet) { background: var(--raised); }
+@media (max-width: 359px) { .btn { font-size: 15px; padding: 0 14px; } }
+@media (min-width: 1024px) { .btn { min-height: 46px; font-size: 15px; } }
+/* Status picker: one line each, at every width. */
+.choose button { white-space: nowrap; font-size: 15px; padding: 0 10px 0 12px; gap: 9px; }
+.choose button[aria-pressed="true"]::after { width: 16px; height: 16px; background-size: 10px; }
+@media (max-width: 339px) { .choose { grid-template-columns: 1fr; } .choose button { min-height: 44px; } }
+
+/* ---------- Record home ---------- */
+.rec-head { display: none; }
+.tile-more { display: none; }
+@media (min-width: 1024px) {
+  #view-record .rec { width: min(1280px, 100%); }
+  .rec-home { display: flex; flex-direction: column; gap: 18px; height: 100%; min-height: 0; }
+  .rec-home > .rec-actions { display: none; }
+  .rec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .rec-head .hello h1 { font: 700 28px/1.1 var(--serif); letter-spacing: -.02em; }
+  .rec-head .hello p { color: var(--ink-2); font-size: 15px; margin-top: 4px; }
+  .rec-head .rec-actions { display: flex; gap: 10px; }
+  .rec-head .rec-actions .btn { min-height: 44px; font-size: 15px; }
+  .rec-tiles { flex: 1; min-height: 0; max-height: none; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .rec-tiles .tile { padding: 18px 18px 16px; gap: 4px; border-radius: 20px; justify-content: flex-start; }
+  .rec-tiles .tile-big { font-size: 38px; margin-top: 14px; }
+  .rec-tiles .tile-big.sm { font-size: 30px; }
+  .rec-tiles .tile-sub { font-size: 15px; margin-top: 4px; }
+  .rec-tiles .tile:hover { box-shadow: var(--shadow), 0 0 0 1.5px var(--accent); }
+  .tile-more { display: grid; gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--edge); }
+  .tile-more span { font-size: 14px; line-height: 1.3; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; text-align: left; }
+}
+@media (min-width: 1024px) and (max-height: 820px) { .tile-more span:nth-child(3) { display: none; } }
+
+/* ---------- a note for a doctor ---------- */
+.note-box {
+  width: 100%; box-sizing: border-box; min-height: 200px; max-height: 58dvh; resize: none; overflow: hidden;
+  border: 0; border-radius: var(--r-md); background: var(--fill); padding: 16px 18px;
+  font: 400 17px/1.5 var(--sans); color: var(--ink);
+}
+.note-box:focus { outline: none; box-shadow: var(--ring); }
+.note-meta { color: var(--ink-3); font-size: 13.5px; margin: 6px 2px 2px; }
+.btn.done { background: var(--routine, #2e9d5b); }
+
+.sheet-status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-2); margin: 4px 2px; }
+.sheet-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ink-3); flex: none; }
+.sheet-status.ok i { background: var(--routine, #2e9d5b); }
+.sheet-status.warn i { background: var(--urgent, #c26a00); }
+
+/* ---------- the input console ---------- */
+.fab {
+  position: fixed; z-index: 15; right: 18px; bottom: calc(var(--nav-h, 64px) + var(--safe-b, 0px) + 14px);
+  width: 60px; height: 60px; border-radius: 50%; border: 0;
+  background: var(--accent); color: var(--accent-ink);
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--accent) 70%, #000), 0 2px 6px rgba(0, 0, 0, .18);
+  display: grid; place-items: center; transition: transform .18s var(--ease);
+}
+.fab svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+.fab:active { transform: scale(.92); }
+body:not([data-view="today"]):not([data-view="record"]):not([data-view="conditions"]) .fab,
+body.kb .fab, body:has(.flow, .sheet-wrap, .panel-wrap) .fab, #app[hidden] ~ .fab, #app[hidden] .fab { display: none; }
+/* Room for the + so it never sits on a tap target. */
+body[data-view="today"] #view-today, body[data-view="record"] #view-record, body[data-view="conditions"] #view-conditions { padding-bottom: 84px; }
+.add-top { display: none; }
+@media (min-width: 1024px) {
+  .fab { display: none !important; }
+  body[data-view] .view { padding-bottom: 24px; }
+  .add-top { display: inline-flex; min-height: 38px; padding: 0 14px; font-size: 15px; border-radius: 12px; }
+  .add-top svg { width: 17px; height: 17px; }
+}
+
+.ctitle { font: 700 22px/1.1 var(--serif); color: var(--ink); letter-spacing: -.02em; }
+.console { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, 1fr); gap: 10px; }
+.ct {
+  min-height: 0; border: 0; border-radius: 18px; background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge);
+  display: grid; grid-template-rows: auto 1fr auto; align-content: start; gap: 2px; padding: 14px; text-align: left; color: var(--ink);
+  transition: transform .15s var(--ease), background .2s;
+}
+.ct:active { transform: scale(.97); background: var(--fill); }
+.ct-ic { width: 38px; height: 38px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 8px; }
+.ct-ic svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ct b { font: 600 16px/1.2 var(--sans); align-self: end; }
+.ct small { font-size: 13px; color: var(--ink-3); margin-top: 2px; }
+.ct.done small { color: var(--routine, #2e9d5b); font-weight: 600; }
+.ct-journal { grid-column: 1 / -1; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 14px; align-items: center; background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.ct-journal .ct-ic { grid-row: 1 / span 2; margin: 0; background: rgba(255, 255, 255, .18); color: currentColor; }
+.ct-journal b { align-self: end; font-size: 17px; }
+.ct-journal small { color: rgba(255, 255, 255, .82); align-self: start; }
+@media (max-height: 640px) { .ct { padding: 10px 12px; } .ct-ic { width: 30px; height: 30px; margin-bottom: 4px; } .ct small { display: none; } .ct-journal small { display: block; } }
+@media (orientation: landscape) and (max-height: 500px) { .console { grid-template-columns: repeat(4, 1fr); } .ct-journal { grid-column: span 2; } }
+@media (min-width: 1024px) {
+  .console-layer .flow-inner { width: min(760px, 100%); }
+  .console { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 132px; }
+  .ct-journal { grid-column: 1 / -1; }
+}
+
+/* One result of any entry. */
+.saved { flex: 1; display: grid; align-content: center; justify-items: center; text-align: center; gap: 10px; }
+.saved h1 { margin-top: 6px; }
+
+/* Short forms inside a flow. */
+.form { display: grid; gap: 12px; }
+.form label, label.form { display: grid; gap: 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.form input, .form select, label.form select { min-height: 52px; border: 0; border-radius: var(--r-md); background: var(--fill); padding: 0 14px; font: 400 17px/1.2 var(--sans); color: var(--ink); width: 100%; box-sizing: border-box; }
+.form input:focus, .form select:focus { outline: none; box-shadow: var(--ring); }
+.form .row > label { flex: 1; min-width: 0; }
+.flow textarea { border: 0; background: var(--fill); }
+.flow textarea:focus { outline: none; box-shadow: var(--ring); }
+.pick { flex: 1; min-height: 0; }
+.o.pk { min-height: 54px; padding: 8px 14px; display: grid; gap: 2px; align-content: center; }
+.o.pk b { font-size: 16px; }
+.o.pk small { font-size: 12.5px; color: var(--ink-3); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.o.io { display: flex; align-items: center; gap: 14px; min-height: 76px; }
+.o.io svg { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.o.io span { display: grid; gap: 2px; }
+.o.io small { font-size: 13.5px; color: var(--ink-3); font-weight: 500; }
+
+/* The long note: the one editor allowed to scroll. */
+.journal-layer .flow-inner { gap: 12px; }
+.jhead h1 { margin-bottom: 4px; }
+.jstat { font-size: 13px; color: var(--ink-3); font-weight: 600; }
+.flow textarea.jbox { flex: 1; min-height: 160px; overflow-y: auto; font: 400 18px/1.55 var(--sans); padding: 16px 18px; border-radius: 18px; }
+@media (min-width: 1024px) {
+  .journal-layer .flow-inner { width: min(820px, 100%); height: calc(100dvh - 60px); max-height: none; }
+  .flow textarea.jbox { font-size: 18px; }
+}
+
+/* Console balance: the long note on top, six tiles, then one slim row. */
+.console { grid-template-rows: 1.15fr repeat(3, 1fr) .55fr; grid-auto-rows: unset; }
+.ct-tablets { grid-column: 1 / -1; grid-template-columns: auto 1fr auto; grid-template-rows: auto; align-items: center; column-gap: 12px; padding: 8px 14px; }
+.ct-tablets .ct-ic { margin: 0; width: 34px; height: 34px; }
+.ct-tablets b { align-self: center; }
+.ct-tablets small { margin: 0; }
+@media (min-width: 1024px) {
+  .console { grid-template-columns: repeat(3, 1fr); grid-template-rows: 120px 132px 132px 64px; }
+}
+@media (orientation: landscape) and (max-height: 500px) { .console { grid-template-rows: 1fr 1fr 1fr; } .ct-journal { grid-column: span 2; } .ct-tablets { grid-column: span 2; } }
+@media (min-width: 1024px) {
+  .tile-more { margin-top: 18px; }
+}
+
+.pick .pg-body { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+.pick .pg-item { min-width: 0; }
+.pick .pg-item > .o { width: 100%; }
+.pick { display: flex; flex-direction: column; }
+.ct-journal, .ct-tablets { align-content: center; }
+.ct-journal { padding: 16px 18px; }
+
+/* Small and short screens give the buttons back a little room. */
+@media (max-height: 640px) { .btn { min-height: 46px; } .choose button { min-height: 42px; } }
+@media (min-width: 1024px) and (max-height: 820px) { .dash .btn { min-height: 40px; font-size: 14.5px; } }
+/* The console's lists page inside a full-height flow. */
+.console-layer .flow-inner { height: 100%; min-height: 0; }
+.console-layer .flow-inner > .pick, .console-layer .flow-inner > .console { flex: 1; min-height: 0; }
+/* Phone on its side: the + sits at the right edge, out of the content. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .fab { width: 48px; height: 48px; right: max(12px, env(safe-area-inset-right)); bottom: calc(var(--nav-h, 64px) + var(--safe-b, 0px) + 10px); }
+  .fab svg { width: 22px; height: 22px; }
+  body[data-view="today"] #view-today, body[data-view="record"] #view-record, body[data-view="conditions"] #view-conditions { padding-bottom: 12px; padding-right: 72px; }
+}
+.row > .btn { flex: 1 1 0; min-width: 0; }
+.dcard .btn:not(.primary) { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
+@media (orientation: landscape) and (max-height: 500px) {
+  .flow-inner > .form { grid-column: 2; grid-row: 2 / span 4; gap: 6px; }
+  .form input, .form select, label.form select { min-height: 40px; font-size: 16px; }
+  .form label { gap: 2px; font-size: 13px; }
+}
+@media (min-width: 1024px) and (max-width: 1279px) { .dcard .row > .btn svg { display: none; } .dcard .row > .btn { padding: 0 10px; } }

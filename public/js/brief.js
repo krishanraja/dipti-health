@@ -1,54 +1,68 @@
-// A short, factual summary to send a doctor before an appointment, built only
-// from her Sheet. For one doctor it leads with what they look after and their
-// questions; for "any doctor" it covers everything. Pure; unit tested.
-import { fmtDate, resultCards } from './metrics.js';
+// A short note Dipti can send a doctor, in her own voice. Never a record dump:
+// a greeting, one or two sentences on what it is about, the one fact a doctor
+// must not miss (steroids), at most two questions, and her name. Built only
+// from her Sheet. Pure; unit tested. /api/note may make the wording warmer but
+// keeps exactly these facts and questions (lib/note.js checks it).
 import { priorities, medicines, questionsByDoctor } from './record-model.js';
-import { appointments, dayOf } from './facts-model.js';
 
-const has = (hay, needle) => String(hay || '').toLowerCase().includes(String(needle || '').toLowerCase());
+const has = (hay, needle) => Boolean(needle) && String(hay || '').toLowerCase().includes(String(needle).toLowerCase());
+const STEROID = /prednis|hydrocortisone|dexameth|methylpred|deflazacort|wysolone|omnacortil/i;
 
-export function briefText(canon = {}, { doctor = null, today = new Date() } = {}) {
-  const c = canon, p = c.profile || {};
-  const doc = doctor ? (c.clinicians || []).find(x => x.name === doctor) : null;
-  const L = [`HEALTH SUMMARY${doc ? ` FOR ${doc.name.toUpperCase()}` : ''} (prepared by the patient from her own records)`,
-    `Prepared ${fmtDate(today.toISOString(), { year: true })}`, ''];
-  if (p.summary) L.push(p.summary, '');
+// Her record is often written to her ("your dentist"); a note is written by her.
+export function firstPerson(s) {
+  return String(s || '')
+    .replace(/\byou are\b/gi, 'I am')
+    .replace(/\byou're\b/gi, "I'm")
+    .replace(/\byou've\b/gi, "I've")
+    .replace(/\byours\b/gi, 'mine')
+    .replace(/\bYour\b/g, 'My').replace(/\byour\b/g, 'my')
+    .replace(/\b(to|for|with|at|tell|give|help|gives|tells|helps|let) you\b/gi, '$1 me')
+    .replace(/\byou\b/gi, 'I');
+}
 
-  const pr = priorities(c).filter(x => x.status !== 'done');
-  const mine = doc ? pr.filter(x => has(x.askWhom, doc.name) || has(x.askWhom, doc.role) || has(doc.owns, x.title)) : pr;
-  if (mine.length) {
-    L.push('WHAT I NEED HELP WITH');
-    mine.forEach((x, i) => L.push(`${i + 1}. ${x.title}${x.why ? ': ' + x.why : ''}`));
-    L.push('');
-  }
-  const conds = (c.conditions || []).filter(x => !/^(resolved|settled)$/.test(x.status));
-  if (conds.length) { L.push('CONDITIONS'); conds.forEach(x => L.push(`- ${x.name}${x.evidence === 'Stated' ? ' (as I understand it)' : ''}`)); L.push(''); }
+function firstSentence(s, max = 200) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  const m = /^(.+?[.!?])(\s|$)/.exec(t);
+  const one = m ? m[1] : t.replace(/[,;:\s]*$/, '') + (t ? '.' : '');
+  return one.length > max ? one.slice(0, max).replace(/\s+\S*$/, '') + '…' : one;
+}
 
-  const m = medicines(c);
-  L.push('MEDICINES I TAKE NOW');
-  m.current.length ? m.current.forEach(x => L.push(`- ${x.name}${x.generic ? ' (' + x.generic + ')' : ''} ${x.dose} ${x.timing}`.replace(/\s+/g, ' ').trimEnd() + (x.differs ? ` [differs from my last prescription: ${x.rx || 'not on it'}]` : ''))) : L.push('- none recorded');
-  if (m.differ) L.push(`Please confirm the ${m.differ} marked medicine${m.differ === 1 ? '' : 's'}.`);
-  // How fresh the list is: the oldest "still right" check among them.
-  const checked = m.current.map(x => x.checked).filter(Boolean).map(d => fmtDate(d, { year: true })).filter(Boolean);
-  if (m.current.length && checked.length === m.current.length) L.push(`I last confirmed this list on ${checked.sort((a, b) => Date.parse(a) - Date.parse(b))[0]}.`);
+const doctorFor = (canon, name) => (canon.clinicians || []).find(x => x.name === name) || null;
+// Words that carry meaning, so "Teeth and gums" matches "Tooth pain".
+const STOP = new Set(['with', 'from', 'that', 'this', 'pain', 'your', 'about', 'and', 'the', 'right', 'left', 'side', 'upper', 'lower', 'full', 'body']);
+const keys = s => String(s || '').toLowerCase().match(/[a-z]{4,}/g)?.filter(w => !STOP.has(w)).map(w => (w === 'teeth' ? 'tooth' : w.replace(/(es|s)$/, ''))) || [];
+const overlap = (a, b) => { const k = new Set(keys(b)); return keys(a).some(w => k.has(w)); };
+const forDoc = (doc, askWhom, title) => !doc || has(askWhom, doc.name) || (doc.role && has(askWhom, doc.role)) || (askWhom && has(doc.name, askWhom.split(/[,(]/)[0].trim())) || overlap(title, doc.owns) || overlap(title, doc.role);
 
-  const rc = resultCards(c.testResults || []);
-  if (rc.length) {
-    L.push('', 'KEY RESULTS (oldest to newest)');
-    for (const r of rc) L.push(`- ${r.def.label}: ${r.points.map(pt => `${pt.below ? '<' : ''}${pt.value} (${fmtDate(pt.date)})`).join(', ')} ${r.def.unit}`.trimEnd());
-  }
-  const ci = (c.checkins || []).slice(-5);
-  if (ci.length) { L.push('', 'MY RECENT SCORES (0 to 10)'); ci.forEach(x => L.push(`- ${fmtDate(x.tsUTC || x.tsLocal)}: tooth ${x.tooth}, tummy ${x.abdomen}, tiredness ${x.fatigue}, sleep ${x.sleep}`)); }
+// The parts of the note, so /api/note can check a rewrite kept them.
+export function noteParts(canon = {}, { doctor = null } = {}) {
+  const doc = doctor ? doctorFor(canon, doctor) : null;
+  const pr = priorities(canon).filter(p => p.status !== 'done');
+  const topic = pr.find(p => forDoc(doc, p.askWhom, p.title)) || (doc ? null : pr[0]) || null;
+  const groups = questionsByDoctor(canon);
+  const mine = doc ? groups.filter(g => has(g.who, doc.name) || has(g.who, doc.role) || has(doc.name, g.who)) : groups;
+  const questions = mine.flatMap(g => g.questions).sort((a, b) => (+a.priority || 9) - (+b.priority || 9)).slice(0, 2).map(q => q.question.trim());
+  const steroid = medicines(canon).current.find(m => STEROID.test(`${m.name} ${m.generic || ''}`));
+  return {
+    to: doc ? doc.name : '',
+    about: topic ? topic.title.replace(/\s*\(.*\)\s*$/, '') : '',
+    context: topic?.why ? firstPerson(firstSentence(topic.why)) : '',
+    critical: steroid ? `I take ${steroid.name}${steroid.dose ? ` (${[steroid.dose, steroid.timing].filter(Boolean).join(', ')})` : ''}, so please keep the steroid in mind.` : '',
+    questions,
+    from: String(canon.profile?.preferredName || canon.profile?.name || 'Dipti').split(' ')[0],
+  };
+}
 
-  const ap = appointments(c, dayOf(today)).upcoming.filter(a => !doc || has(a.with, doc.name) || has(doc.name, a.with) || has(a.with, doc.role));
-  if (ap.length) { L.push('', 'COMING UP'); ap.slice(0, 3).forEach(a => L.push(`- ${fmtDate(a.date, { year: true })}${a.time ? ' ' + a.time : ''}: ${a.with}${a.for ? ' (' + a.for + ')' : ''}`)); }
-
-  const groups = questionsByDoctor(c);
-  const qs = doc ? groups.filter(g => has(g.who, doc.name) || has(g.who, doc.role)) : groups;
-  const flat = qs.flatMap(g => g.questions.map(q => ({ ...q, who: g.who })));
-  if (flat.length) {
-    L.push('', 'MY QUESTIONS');
-    flat.forEach((q, n) => L.push(`${n + 1}. ${q.question}${doc ? '' : ` (for ${q.who})`}`));
-  }
+export function noteText(parts) {
+  const greet = parts.to ? `Hello ${parts.to},` : 'Hello,';
+  const L = [greet, ''];
+  const open = parts.about ? `I'm writing about my ${parts.about.charAt(0).toLowerCase() + parts.about.slice(1)}.` : "I'm writing with a quick question.";
+  L.push([open, parts.context].filter(Boolean).join(' '));
+  if (parts.critical) L.push('', parts.critical);
+  if (parts.questions.length === 1) L.push('', `Could you help me with one thing: ${parts.questions[0]}`);
+  else if (parts.questions.length) L.push('', 'Could you help me with two things?', ...parts.questions.map((q, i) => `${i + 1}. ${q}`));
+  L.push('', 'Thank you so much.', parts.from);
   return L.join('\n');
 }
+
+export function doctorNote(canon = {}, opts = {}) { return noteText(noteParts(canon, opts)); }

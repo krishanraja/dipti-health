@@ -10,6 +10,8 @@ import { lastCheckin, scoreSeries, localDay, TZ } from './dipti-model.js';
 import { entitiesIn, related, sourcesFor, GRADE_LABEL } from './evidence.js';
 import { DOCTOR } from './persona.js';
 import { pager, autoPages } from './pager.js';
+
+const PEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 import { openSheet } from './record.js';
 import { factsToday, nextAppointment, whenText } from './facts-model.js';
 
@@ -71,7 +73,7 @@ export function renderDashboard(el, context) {
         <div class="dc-head"><p class="kicker">Today's check-in</p>${checkedToday ? '<span class="ok-text">Done ✓</span>' : ''}</div>
         <div class="scores">${AREAS.map(([k, l]) => { const s = scoreSeries(canon, k); return `<div class="score-mini"><span>${l}</span><b>${s.length ? s[s.length - 1].value : '–'}<small>/10</small></b>${spark(s, { w: 90, h: 26, min: 0, max: 10 })}</div>`; }).join('')}</div>
         ${checkedToday ? '' : '<button class="btn primary" data-check>Check in now (30 seconds)</button>'}
-        <div class="row"><button class="btn" data-log>Log a symptom</button><button class="btn" data-meds>Tablets taken</button></div>
+        <div class="row"><button class="btn" data-add>${PEN}Write an update</button><button class="btn" data-log>Log a symptom</button></div>
       </article>
     </section>
 
@@ -124,6 +126,7 @@ export function renderDashboard(el, context) {
 
   // One delegated listener: list items are redrawn on every page turn.
   root.onclick = e => {
+    if (e.target.closest('[data-add]')) return ctx.openConsole?.('journal');
     const t = e.target.closest('[data-fact], [data-p], [data-check], [data-log], [data-meds], [data-q], [data-g], [data-m], [data-r], [data-more]');
     if (!t) return;
     const d = t.dataset;
@@ -218,7 +221,7 @@ function questionsPanel(who) {
   if (!g) return;
   panel(who, g.questions.map((q, i) => `<p class="qline"><span class="prio-n">${i + 1}</span>${esc(q.question)}</p>`).join(''), (wrap, close) => {
     wrap.querySelector('[data-brief]').onclick = () => { close(); const doc = (ctx.canon()?.clinicians || []).find(c => who.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(who.toLowerCase())); ctx.shareBrief(doc ? doc.name : ''); };
-  }, `<button class="btn primary grow" data-brief>Make a summary for ${esc(who)}</button>${sheetLine('Questions')}`);
+  }, `<button class="btn primary grow" data-brief>Write a note to ${esc(who.replace(/\s*\(.*\)\s*$/, ''))}</button>${sheetLine('Questions')}`);
 }
 
 function gapPanel(id) {

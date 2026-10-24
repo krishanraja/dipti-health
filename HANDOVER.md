@@ -1,5 +1,16 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-10-24 (evening): input console, long notes, doctor notes
+
+- [x] Buttons v3 in `public/ds.css` (D32).
+- [x] Console `public/js/console.js`, opened from `#addBtn` (phones) and `#addTop` (wide). Flows reuse `flow`, `head`, `startCheckin`, `logSymptom`, `tablets` from `today.js` and `addAppointment` from `record.js`.
+- [x] Long notes: `journal` action, `_Journal` tab, `GET ?action=journal&jid=` (D34).
+- [x] Doctor notes: `public/js/brief.js` (`noteParts`, `noteText`), `api/note.js`, `lib/note.js` (D35).
+- [x] Sheet version: `ping` returns `{version, actions}`; `api/status.js`; 409 for an outdated script (D37).
+- [x] `scripts/noscroll.mjs` walks the console; `.jbox` is exempt from the scroll rule.
+- [ ] Krish: paste the new Code.gs, run `setup()` (adds `_Journal`), publish a new version, then open settings and check it says "up to date".
+- [ ] Real-model check of `api/note.js` wording: the scripted model always falls back to the draft.
+
 ## 2026-10-24: map on phones, Sheet integrity, Feedback
 
 - [x] Conditions map rewritten as two columns (`mapSvg`, `linkSheet` in `public/js/conditions.js`; styles at the end of `public/ds.css`).

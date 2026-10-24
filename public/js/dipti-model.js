@@ -8,7 +8,7 @@ import { triage, maxLevel } from './triage.js';
 export const TZ = 'Asia/Kolkata';
 
 export const TAGS = {
-  symptom: 'symptom-log', meds: 'meds-taken', says: 'dipti-says', fact: 'fact', concern: 'concern', found: 'found-out',
+  symptom: 'symptom-log', meds: 'meds-taken', says: 'dipti-says', fact: 'fact', concern: 'concern', found: 'found-out', journal: 'journal',
 };
 
 // Her symptoms, in her words. `area` links a symptom to a priority.

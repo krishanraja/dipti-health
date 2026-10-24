@@ -18,8 +18,9 @@ It is built on the design system, architecture and mission of Beside (`krishanra
 - **Ask Ellie.** A chat with a young English GP who knows her whole record and the research pack in her Sheet. Replies are streamed. She can use voice or a photo.
 - **Still right? (the fact checker).** Her medicines, symptoms and appointments change often, so the app keeps asking, gently. A few quick checks come up each day on Today (and in the overview): "Are you still taking X?", "Did you see Dr Y yesterday?", "How is your tooth pain now?". One tap answers; a change asks for the new dose or date on a second screen. Anything not confirmed in 7 days comes round again; a booked appointment that has passed comes first. Each answer is written to her Sheet and its Changelog straight away. In chat, when she mentions a change ("I stopped X", "the dentist moved me to Friday"), Ellie shows a confirm card, and nothing is written until she taps Yes.
 - **Appointments.** In Record: what is coming up and what is done, with an Add button. The next one shows on Today, and summaries for a doctor list that doctor's next appointment and when the medicine list was last confirmed.
+- **Add to my record.** One round + (or "+ Add" on a computer) opens everything she can add: write or talk it through (as long as she likes, typed, spoken or dictated), how she feels today, a symptom, a medicine change, a test result (photo or typed), an appointment, a question for a doctor, and tablets taken.
 - **Feedback.** One tap on how it feels to use (confusing, missing, not right, too much to read, hard to tap or see, or I like this), then an optional note, typed or spoken. Each one is a row in the Sheet's Feedback tab, with the screen she came from.
-- **Summary for a doctor.** Pick a doctor and get a short brief with only what that doctor looks after and only the questions for them.
+- **A note for a doctor.** Pick a doctor and get a short, warm note in her own words: what it is about, the steroid if she takes one, and at most two questions. One tap copies it to paste into WhatsApp or an email.
 
 ### How it behaves
 

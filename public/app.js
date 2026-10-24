@@ -5,9 +5,10 @@ import { canRecord, startRecording, transcribeBlob } from '/js/recorder.js';
 import { mountConditions, refreshConditions, conditionsHome, openCondition } from '/js/conditions.js';
 import { mountChat, refreshChat, sendToChat, checkPending, photoToChat, showChat } from '/js/chat.js';
 import { person, matchPerson } from '/js/people.js';
-import { briefText } from '/js/brief.js';
+import { noteParts, noteText } from '/js/brief.js';
 import { DOCTOR } from '/js/persona.js';
 import { mountFeedback, feedbackFrom } from '/js/feedback.js';
+import { mountConsole, openConsole } from '/js/console.js';
 
 /* ---------------- tiny helpers ---------------- */
 const $ = (s, el = document) => el.querySelector(s);
@@ -95,6 +96,7 @@ async function save(action, payload) {
     if (e.status === 401) return { ok: false };
     if (e.status === 422) { toast(`Couldn't save that: ${String(e.message).replace(/^sheet API: /, '')}`, 4500); return { ok: false, rejected: true }; }
     const q = store.get('queue', []); q.push(item); store.set('queue', q);
+    if (e.status === 409) { setSync('warn', 'Sheet needs updating'); syncError = 'Your Sheet needs its latest script. Ask Krish to update it.'; return { ok: false, queued: true, outdated: true }; }
     setSync('warn', `${q.length} waiting to save`);
     return { ok: false, queued: true };
   }
@@ -118,6 +120,7 @@ function flushQueue() {
       catch (e) { if (e.status === 422) refused.push(item); else left.push(item); }
     }
     store.set('queue', left);
+    if (left.length && !refused.length) setSync('warn', `${left.length} waiting to save`);
     if (refused.length) toast(`${refused.length} change${refused.length === 1 ? '' : 's'} could not be saved: the Sheet refused ${refused.length === 1 ? 'it' : 'them'}.`, 5000);
     else if (!left.length) toast('Saved everything that was waiting');
   })().finally(() => { flushing = null; });
@@ -205,7 +208,7 @@ async function boot() {
   document.body.classList.toggle('as-family', !me().dipti);
   document.querySelectorAll('[data-ask-label]').forEach(s => { s.textContent = `Ask ${DOCTOR.first}`; });
   $('#login').hidden = true; $('#app').hidden = false;
-  buildToday(); buildRecord(); buildConditions(); buildChat(); mountFeedback($('#fb'), ctx());
+  buildToday(); buildRecord(); buildConditions(); buildChat(); mountFeedback($('#fb'), ctx()); mountConsole(ctx());
   go(store.get('view', 'today'));
   await flushQueue();
   loadCanon();
@@ -222,6 +225,7 @@ function go(name) {
   if (!['today', 'record', 'conditions', 'ask', 'feedback'].includes(name)) name = 'today';
   if (name === 'feedback') feedbackFrom(store.get('view', 'today'));
   store.set('view', name);
+  document.body.dataset.view = name;
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.dataset.view !== name; });
   document.querySelectorAll('[data-go]').forEach(b => { if (b.dataset.go === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   if (name === 'ask') showChat();
@@ -282,7 +286,7 @@ function listen(onText, onState) {
 
 /* ---------------- views ---------------- */
 function openAsk(text) { go('ask'); sendToChat(text); }
-const ctx = () => ({ canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, factFlow, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
+const ctx = () => ({ openConsole: k => openConsole(k), canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, factFlow, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
 function buildToday() { mountToday($('#today'), ctx()); }
 function buildRecord() { mountRecord($('#rec'), ctx()); }
 function buildConditions() { mountConditions($('#conds'), ctx()); }
@@ -302,47 +306,54 @@ if (window.visualViewport) {
   vv.addEventListener('resize', onVV); vv.addEventListener('scroll', onVV); onVV();
 }
 
-/* ---------------- summary for a doctor ---------------- */
-// The summary in blocks of a few lines; a heading stays with what follows it.
-function briefBlocks(text) {
-  const out = [];
-  text.split(/\n{2,}/).forEach(block => {
-    const lines = block.split('\n');
-    const head = lines.length > 1 && !/^[-•*]/.test(lines[0]) ? lines.shift() : null;
-    if (head) out.push({ text: head, head: true });
-    let cur = [];
-    for (const l of lines) {
-      if (cur.length && (cur.join('\n') + l).length > 170) { out.push({ text: cur.join('\n') }); cur = []; }
-      cur.push(l);
-    }
-    if (cur.length) out.push({ text: cur.join('\n') });
-  });
-  return out;
-}
+/* ---------------- a note for a doctor ---------------- */
 function shareBrief(doctor = null) {
   const docs = canon?.clinicians || [];
   if (doctor === null && docs.length) {
-    return openSheet(`<p class="kicker">Summary for a doctor</p><h3 class="sheet-title">Who is it for?</h3>
+    return openSheet(`<p class="kicker">A note for a doctor</p><h3 class="sheet-title">Who is it for?</h3>
       <div class="who-list compact" data-pages="Doctors">${docs.map(d => `<button class="who-opt" data-doc="${esc(d.name)}"><span class="who-ic f">${esc(d.name.replace(/^Dr\.?\s*/i, '').charAt(0))}</span><span class="who-t"><b>${esc(d.name)}</b></span>${CHEVRON}</button>`).join('')}
-      <button class="who-opt" data-doc=""><span class="who-ic o">+</span><span class="who-t"><b>Any doctor (everything)</b></span>${CHEVRON}</button></div>
+      <button class="who-opt" data-doc=""><span class="who-ic o">+</span><span class="who-t"><b>Another doctor</b></span>${CHEVRON}</button></div>
       <button class="btn ghost" data-close>Cancel</button>`, (sheet, close) => {
       sheet.addEventListener('click', e => { const b = e.target.closest('[data-doc]'); if (b) { close(); shareBrief(b.dataset.doc || ''); } });
     });
   }
-  const text = briefText(canon || {}, { doctor: doctor || null });
-  // The summary is for sending; here it is shown a block at a time.
-  openSheet(`<p class="kicker">Summary${doctor ? ' for ' + esc(doctor) : ''}</p><div class="brief" data-pages="Summary">${briefBlocks(text).map(b => `<pre${b.head ? ' data-keep' : ''}>${esc(b.text)}</pre>`).join('')}</div>
-    <div class="row"><button class="btn ghost" data-close>Close</button><button class="btn primary grow" data-send>${navigator.share ? 'Send' : 'Copy'}</button></div>`, (sheet, close) => {
-    sheet.querySelector('[data-send]').onclick = async () => {
+  // A short note in her voice: shown at once, editable, one tap to copy.
+  // Ellie may make the wording warmer (api/note.js) but never adds to it.
+  const parts = noteParts(canon || {}, { doctor: doctor || null });
+  const draft = noteText(parts);
+  openSheet(`<p class="kicker">A note ${doctor ? 'for ' + esc(doctor) : 'for a doctor'}</p><h3 class="sheet-title">Ready to send</h3>
+    <textarea class="note-box" id="noteBox" maxlength="1500" aria-label="Your note">${esc(draft)}</textarea>
+    <p class="note-meta" id="noteMeta">In your words. Change anything you like.</p>
+    <div class="row"><button class="btn primary grow" data-copy>${ICON_COPY}Copy note</button>${navigator.share ? `<button class="btn" data-send>${ICON_SEND}Send</button>` : ''}</div>`, (sheet, close) => {
+    const box = sheet.querySelector('#noteBox'), meta = sheet.querySelector('#noteMeta');
+    let touched = false;
+    // The box grows to fit the note, so the whole message is always in view.
+    const grow = () => { box.style.height = 'auto'; box.style.height = box.scrollHeight + 2 + 'px'; };
+    box.addEventListener('input', () => { touched = true; grow(); });
+    requestAnimationFrame(grow);
+    api('/api/note', { method: 'POST', body: { draft, parts }, timeout: 20000 }).then(r => {
+      if (!touched && r?.text && r.text !== draft && box.isConnected) { box.value = r.text; grow(); meta.textContent = 'Worded warmly by Ellie, with only what is in your record.'; }
+    }).catch(() => {});
+    const copyBtn = sheet.querySelector('[data-copy]');
+    copyBtn.onclick = async () => {
       try {
-        if (navigator.share) await navigator.share({ title: 'Health summary', text });
-        else { await navigator.clipboard.writeText(text); toast('Copied. Paste it into a message or email.'); }
-        close();
-      } catch (e) { if (e.name !== 'AbortError') toast('Could not copy on this browser'); }
+        await navigator.clipboard.writeText(box.value);
+        copyBtn.innerHTML = `${ICON_TICK}Copied`; copyBtn.classList.add('done');
+        toast('Copied. Paste it into WhatsApp or an email.');
+        setTimeout(() => { if (copyBtn.isConnected) { copyBtn.innerHTML = `${ICON_COPY}Copy note`; copyBtn.classList.remove('done'); } }, 2200);
+      } catch { box.select(); toast('Select all and copy'); }
     };
+    sheet.querySelector('[data-send]')?.addEventListener('click', async () => {
+      try { await navigator.share({ text: box.value }); close(); } catch { /* cancelled */ }
+    });
   });
 }
+const ICON_COPY = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+const ICON_SEND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>';
+const ICON_TICK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9"/></svg>';
 $('#shareBtn').addEventListener('click', () => shareBrief());
+$('#addBtn').addEventListener('click', () => openConsole());
+$('#addTop').addEventListener('click', () => openConsole());
 
 /* ---------------- settings ---------------- */
 $('#gearBtn').addEventListener('click', () => settingsSheet());
@@ -357,9 +368,15 @@ function settingsSheet() {
     <input id="whoNameSet" maxlength="40" placeholder="First name">
   </div>
   ${canon?.sheetUrl ? `<a class="btn" href="${esc(canon.sheetUrl)}" target="_blank" rel="noopener">Open my Google Sheet</a>` : ''}
+  <p class="sheet-status" id="sheetStatus"><i></i><span>Checking the Sheet…</span></p>
   <button class="btn" data-out>Log out on this device</button>
   <button class="btn primary" data-close>Done</button>`, (sheet, close) => {
     const w = sheet.querySelector('#whoNameSet'), box = sheet.querySelector('.someone');
+    const st = sheet.querySelector('#sheetStatus');
+    api('/api/status', { timeout: 9000 }).then(r => {
+      st.className = 'sheet-status ' + (r.ok && r.current ? 'ok' : 'warn');
+      st.querySelector('span').textContent = !r.ok ? r.error : r.current ? `Sheet script up to date (${r.version})` : 'Sheet script needs updating: paste the latest Code.gs and publish a new version';
+    }).catch(() => { st.className = 'sheet-status warn'; st.querySelector('span').textContent = 'Could not check the Sheet'; });
     w.value = current === 'other' ? store.get('who', '') : '';
     sheet.addEventListener('click', e => {
       const b = e.target.closest('[data-who]'); if (!b) return;

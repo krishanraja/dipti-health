@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { priorities, medicines, questionsByDoctor, historyEvents } from '../public/js/record-model.js';
-import { briefText } from '../public/js/brief.js';
+import { doctorNote, noteParts, firstPerson } from '../public/js/brief.js';
+import { keepsFacts } from '../lib/note.js';
 
 // Invented record in the Sheet's shape.
 const canon = {
@@ -55,16 +56,31 @@ test('history: repeated questions collapse, routine taps hidden, newest first', 
   assert.ok(!h.some(e => /MEDS/.test(e.detail)));
   assert.equal(h[0].date, '22 Oct 2026');
 });
-test('a brief for one doctor leads with what they look after and only their questions', () => {
-  const t = briefText(canon, { doctor: 'Dr Tooth', today: new Date('2026-10-24') });
-  assert.match(t, /FOR DR TOOTH/);
-  assert.match(t, /1\. Tooth: Hurts to bite/);
-  assert.doesNotMatch(t, /Tummy pain/);
-  assert.match(t, /Beta 20 mg twice \[differs from my last prescription: 10 mg night\]/);
-  assert.match(t, /GGT \(liver enzyme\): 70\.5 \(10 Apr\), 95\.5 \(5 Oct\) U\/L/);
-  assert.match(t, /MY QUESTIONS\n1\. Crown\?$/m);
-  assert.doesNotMatch(t, /Stool results/);
+test('a note to one doctor is short, in her voice, and asks at most two things', () => {
+  const c = { ...canon, medications: [...canon.medications, { name: 'Prednisone', dose: '10 mg', timing: 'morning', status: 'current' }],
+    questions: [...canon.questions, { id: 'Q4', question: 'Night guard?', askWhom: 'Dr Tooth', priority: '2', status: 'open' }, { id: 'Q5', question: 'Implant?', askWhom: 'Dr Tooth', priority: '3', status: 'open' }] };
+  const t = doctorNote(c, { doctor: 'Dr Tooth' });
+  assert.match(t, /^Hello Dr Tooth,/);
+  assert.match(t, /I'm writing about my tooth\. Hurts to bite\./);
+  assert.match(t, /I take Prednisone \(10 mg, morning\), so please keep the steroid in mind\./);
+  assert.match(t, /1\. Crown\?\n2\. Night guard\?/);
+  assert.doesNotMatch(t, /Implant|Stool|GGT|Beta/);
+  assert.ok((t.match(/\?/g) || []).length <= 3);
+  assert.ok(t.split(/\s+/).length < 80);
+  assert.match(t, /Thank you so much\.\nDipti$/);
 });
-test('a general brief covers every open question, with who it is for', () => {
-  assert.match(briefText(canon), /Stool results\? \(for Dr GI\)/);
+test('a note finds its topic from what the doctor looks after', () => {
+  const c = { priorities: [{ id: 'P', rank: '1', title: 'Tooth pain (upper molar)', status: 'now' }], clinicians: [{ name: 'Dr A', role: 'Dentist', owns: 'Teeth and gums' }] };
+  assert.equal(noteParts(c, { doctor: 'Dr A' }).about, 'Tooth pain');
+});
+test('her record is written to her; her note is written by her', () => {
+  assert.equal(firstPerson('Your dentist will not remove it while you are on steroids and will tell you soon.'), 'My dentist will not remove it while I am on steroids and will tell me soon.');
+});
+test('a warmer rewrite is refused if it adds a number, a question, or drops her name', () => {
+  const parts = noteParts(canon, { doctor: 'Dr Tooth' });
+  const d = doctorNote(canon, { doctor: 'Dr Tooth' });
+  assert.ok(keepsFacts(d, d, parts));
+  assert.ok(!keepsFacts(d, d.replace('Thank', 'Take 20 mg. Thank'), parts));
+  assert.ok(!keepsFacts(d, d.replace('Thank', 'Is it bad? Should I? Thank'), parts));
+  assert.ok(!keepsFacts(d, d.replace(/Dipti$/, 'D.'), parts));
 });

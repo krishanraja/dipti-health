@@ -131,3 +131,27 @@ test('feedback: a chip alone is enough; it lands in the Feedback tab', () => {
   assert.equal(api.post({ secret: 's', action: 'feedback', by: 'Dipti', payload: { chip: 'Too much to read', screen: 'today' } }).ok, true);
   assert.deepEqual([...api.tabs.Feedback.rows[1]].slice(1), ['Dipti', 'Too much to read', '', 'today', 'new']);
 });
+test('a long note: every word kept in _Journal, a short preview in Notes, reads stay small', () => {
+  const api = createSheetApi({ secret: 's' });
+  const text = 'I woke up tired and my tooth throbbed. '.repeat(500); // about 20,000 characters
+  const post = () => api.post({ secret: 's', action: 'journal', by: 'Dipti', opId: 'j-1', payload: { jid: 'J1', text } });
+  assert.equal(post().ok, true);
+  assert.equal(post().duplicate, true); // a replay writes nothing
+  assert.equal(api.tabs._Journal.rows.length, 2);
+  const note = api.get({ secret: 's', action: 'read' }).notes.find(n => n.tag === 'journal');
+  assert.ok(note.text.length < 450 && /\nJID: J1$/.test(note.text));
+  const full = api.get({ secret: 's', action: 'journal', jid: 'J1' });
+  assert.equal(full.text, text.slice(0, 45000));
+});
+test('ping says which script version is deployed and what it can do', () => {
+  const api = createSheetApi({ secret: 's' });
+  const p = api.get({ secret: 's', action: 'ping' });
+  assert.match(p.version, /^\d{4}-\d{2}-\d{2}/);
+  for (const a of ['feedback', 'journal', 'chat']) assert.ok([...p.actions].includes(a), a);
+});
+test('the app expects the same script version Code.gs reports', async () => {
+  const fs = await import('node:fs');
+  const gs = fs.readFileSync(new URL('../apps-script/Code.gs', import.meta.url), 'utf8');
+  const { SHEET_VERSION } = await import('../api/status.js');
+  assert.equal(/var VERSION = '([^']+)'/.exec(gs)[1], SHEET_VERSION);
+});
