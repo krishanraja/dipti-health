@@ -115,7 +115,7 @@ const SPOKES = {
     const other = (canon.testResults || []).length;
     spoke('Results', 'TestResults', [...cards.map(c => `<section class="lcard">
       <div class="lc-top"><b>${esc(c.def.label)}</b><i class="chip ${cardLabel(c).tone}">${esc(cardLabel(c).text)}</i></div>
-      <p class="series">${c.points.map(p => `<span><b>${p.below ? '<' : ''}${p.value}</b><small>${esc(fmtDate(p.date))}</small></span>`).join('<i>→</i>')} <small>${esc(c.def.unit)}</small></p>
+      <p class="series">${c.points.length > 4 ? '<span class="more-pts">…</span>' : ''}${c.points.slice(-4).map(p => `<span><b>${p.below ? '<' : ''}${p.value}</b><small>${esc(fmtDate(p.date))}</small></span>`).join('<i>→</i>')} <small>${esc(c.def.unit)}</small></p>
       <p class="soft">${esc(c.def.plain)}</p></section>`), ...(other ? [`<p class="meta">${other} result rows in total. Every one is in the Sheet.</p>`] : [])]);
   },
   questions: canon => {

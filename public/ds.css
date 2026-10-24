@@ -628,3 +628,4 @@ h1, .hello h1, .sheet-title, .zhead h2, .flow h1, .ctitle { font-family: var(--s
 @media (orientation: landscape) and (max-height: 500px) { .ls-body .meta { display: none; } }
 .zsec-h { padding: 4px 2px 0; }
 .zsec.zsec-row { padding: 8px 14px; border-radius: 14px; }
+.series .more-pts { color: var(--ink-3); align-self: center; }

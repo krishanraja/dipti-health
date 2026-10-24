@@ -56,13 +56,13 @@ function render() {
   const tagOf = p => (p.status === 'waiting' ? ['wait', 'Waiting'] : p.status === 'better' ? ['ok', 'Getting better'] : ['hand', 'In hand']);
   const [lead, ...rest] = pr;
   root.innerHTML = `<div class="fit today-home calm">
-    <div class="hello"><p class="lbl">${esc(next ? `Next: ${next.with}, ${whenText(next.date, next.time)}` : date)}</p><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}.</h1><p class="lede">${esc(todayLine(canon).replace('Everything else', pr.length ? 'Everything else' : 'Everything'))}</p></div>
+    <div class="hello"><p class="lbl">${esc(next ? `Next: ${next.with}, ${whenText(next.date, next.time)}` : date)}</p><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}.</h1><p class="lede drop">${esc(todayLine(canon).replace('Everything else', pr.length ? 'Everything else' : 'Everything'))}</p></div>
     ${lead ? `<div class="focus" data-p="${esc(lead.id)}" role="button" tabindex="0">
         <span class="lbl">Today's one step</span>
         <b>${esc(lead.nextStep || short(lead.title))}</b>
         <span class="focus-foot"><small>For ${you() ? 'your' : 'her'} ${esc(short(lead.title).toLowerCase())}</small><button class="done-it" data-done="${esc(lead.id)}">Done it</button></span>
       </div>` : ''}
-    ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small>${esc(p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
+    ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small class="drop">${esc(p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
     ${checkedToday
       ? `<button class="kc checkin done" data-check><span><small>Today's check-in ✓</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
       : `<button class="kc checkin" data-check><span><small>30 seconds</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
