@@ -3,7 +3,7 @@ repo: krishanraja/dipti-health
 product: Holistic
 as_of: 2026-10-24
 head: see git log
-lifecycle: deployed (default branch main since 8 Nov; Vercel still deploys production from claude/magical-mayer-ojpf7z until its production branch is switched to main)
+lifecycle: deployed (production branch main since 8 Nov)
 production_url: https://www.xrds.au (xrds.au redirects; dipti-health.vercel.app also works)
 state_doc: README.md
 history_log: docs/DECISIONS.md
@@ -58,7 +58,7 @@ Results (8 Nov, invented fixture): `npm test` 111/111 (also under TZ=Asia/Kolkat
 
 ## What is next and waiting on Krish
 
-0. Done 8 Nov: merged to production and to `main` (now the default branch); Code.gs 2026-11-08b pasted, `setup()` run, new version published, reminder set up as krishanraja@gmail.com (the Sheet's owner). Still open: switch Vercel's production branch to `main`. Earlier steps, kept for reference: paste the new `apps-script/Code.gs` (version 2026-11-08b), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app repairs dates on the server, but times are exact only with the new script.
+0. Done 8 Nov: merged to production and to `main` (now the default branch); Code.gs 2026-11-08b pasted, `setup()` run, new version published, reminder set up as krishanraja@gmail.com (the Sheet's owner). Vercel's production branch switched to `main` the same day. Earlier steps, kept for reference: paste the new `apps-script/Code.gs` (version 2026-11-08b), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app repairs dates on the server, but times are exact only with the new script.
 0a. Turn on the daily check-in reminder (D54): Project Settings › Script properties › add `REMINDER_TO` = Dipti's email (optionally `REMINDER_HOUR`, default 19, India time), then run `setupReminder()` once and allow the permissions. `stopReminder()` turns it off.
 0b. On her Medications tab, five rows she confirmed on 26 Oct have no CheckedAt (lost to the double-tap bug, D50), so she will be asked about them again; that is expected and harmless. Her latest check-in note mentions a dose change that is not on her list yet.
 

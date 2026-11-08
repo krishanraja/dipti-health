@@ -7,7 +7,7 @@
 - [x] Merged to `claude/magical-mayer-ojpf7z`.
 - [x] Krish (8 Nov): pasted Code.gs 2026-11-08b, ran `setup()`, published; set `REMINDER_TO`, ran `setupReminder()` as krishanraja@gmail.com (the Sheet's owner).
 - [ ] First reminder due 9 Nov about 19:00 India time: confirm a `reminder-2026-11-09` row in `_Ops` (none on 8 Nov; setup came after 19:00).
-- [ ] `main` is the default branch; Vercel's production branch is still `claude/magical-mayer-ojpf7z`.
+- [x] `main` is the default branch and Vercel's production branch (switched 8 Nov).
 - [ ] Watch: does she check in on reminder days? Each email sent is a `reminder-YYYY-MM-DD` row in `_Ops`.
 
 ## 2026-11-08: input audit (D46–D53)
