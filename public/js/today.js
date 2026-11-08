@@ -8,6 +8,7 @@ import { CONTACTS_SELF, CONTACTS, SICK_DAY } from './triage.js';
 import { DOCTOR } from './persona.js';
 import { renderDashboard } from './dashboard.js';
 import { factsToday, writesFor, needsEdit, applyLocal, nextAppointment, whenText, dayOf } from './facts-model.js';
+import { afterCheckin, todayTrend } from './insights-model.js';
 
 let ctx, root, flowOpen = false;
 const $ = (s, el = root) => el.querySelector(s);
@@ -49,6 +50,7 @@ function render() {
   const name = you() ? 'Dipti' : ctx.me().name || '';
   const next = nextAppointment(canon);
   const facts = factsToday(canon);
+  const trend = todayTrend(canon);
 
   // One calm line, one step for today, the rest in a quiet list. The focus
   // is the first priority's next step; the others say where they stand.
@@ -64,8 +66,8 @@ function render() {
       </div>` : ''}
     ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small class="drop">${esc(p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
     ${checkedToday
-      ? `<button class="kc checkin done" data-check><span><small>Today's check-in ✓</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
-      : `<button class="kc checkin" data-check><span><small>30 seconds</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
+      ? `<button class="kc checkin done" data-check><span><small>${trend ? `Checked in ✓ · ${esc(trend.replace(/ this week$/, ''))}` : "Today's check-in ✓"}</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
+      : `<button class="kc checkin" data-check><span><small>${trend ? esc(trend) : '30 seconds'}</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
     ${facts.length ? `<button class="facts-line" data-facts><span>Still right? ${facts.length} quick check${facts.length === 1 ? '' : 's'}</span>${CHEV}</button>` : ''}
   </div>`;
   root.querySelector('[data-done]')?.addEventListener('click', e => { e.stopPropagation(); const p = pr.find(x => x.id === e.currentTarget.dataset.done); if (p) editNextStep(canon, p, true); });
@@ -199,8 +201,10 @@ export function startCheckin() {
         const r = await ctx.save('checkin', { answers: a, notes });
         const verdict = r.ok ? r.out.verdict : (a.bowels === 'diarrhoea' ? 'Act-today' : 'Saved offline');
         const canon = ctx.canon();
+        // Compared with her own recent days, before today's is added.
+        const read = afterCheckin(canon || {}, a);
         if (canon) (canon.checkins || (canon.checkins = [])).push({ tsUTC: new Date().toISOString(), by: ctx.who(), ...a, verdict, notes });
-        checkinResult(verdict, a, r.ok);
+        checkinResult(verdict, a, r.ok, read);
         if (r.ok) ctx.reload();
       };
     });
@@ -208,15 +212,16 @@ export function startCheckin() {
   step();
 }
 
-function checkinResult(verdict, a, ok) {
+function checkinResult(verdict, a, ok, read = { lines: [] }) {
   const map = {
-    Steady: ['routine', 'Steady', 'Nothing has changed for the worse. Keep going with your plan.'],
+    Steady: ['routine', read.lines.some(l => /lower than/.test(l)) && !read.lines.some(l => /higher than/.test(l)) ? 'Steady, and some of it easing' : 'Steady', 'Nothing has changed for the worse. Keep going with your plan.'],
     Changed: ['soon', 'Something changed', 'Not an emergency. Worth mentioning to the right doctor this week.'],
     'Act-today': ['urgent', 'Call your doctor today', a.bowels === 'diarrhoea' ? SICK_DAY : 'Pain this strong needs a same-day word with your doctor or dentist.'],
   };
   const [lvl, title, body] = map[verdict] || ['soon', 'Saved on this device', 'It will reach your Sheet when you are back online.'];
   const c = contacts()[lvl];
   flow(`<section class="kc level ${lvl}"><h1>${esc(title)}</h1><p>${esc(body)}</p>
+    ${read.lines.length ? `<ul class="ci-read">${read.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
     ${lvl === 'urgent' ? `<div class="who">${c.lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>` : ''}
     <p class="meta">${ok ? 'Saved to your Sheet.' : 'Saved on this device. It will send when you are online.'}</p></section>
     <div class="row"><button class="btn" data-ask>${ICO.chat}Talk it through</button><button class="btn primary grow" data-x>Done</button></div>`, layer => {

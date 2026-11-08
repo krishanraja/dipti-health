@@ -61,6 +61,10 @@
 .kc.level.emergency { background: linear-gradient(160deg, #c8342b, var(--emergency)); }
 .kc.level .who { background: rgba(255,255,255,.15); border-radius: 16px; padding: 12px 14px; display: grid; gap: 6px; font-size: 15px; }
 .kc.level .meta { color: rgba(255,255,255,.85); font-size: 13px; }
+/* After a check-in: how today compares with her own recent days. */
+.kc.level .ci-read { list-style: none; margin: 0; padding: 12px 14px; display: grid; gap: 6px; background: rgba(255,255,255,.14); border-radius: 16px; font-size: 15px; line-height: 1.35; }
+.kc.level .ci-read li { padding-left: 14px; position: relative; }
+.kc.level .ci-read li::before { content: ''; position: absolute; left: 0; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.8); }
 .btn.sos { background: #fff; color: var(--emergency); display: grid; place-items: center; text-decoration: none; flex: 1; }
 
 /* ---------- sheets ---------- */
@@ -505,4 +509,14 @@ a.btn { text-decoration: none; color: var(--ink); }
   .flow-inner:has(> .finput) > * { grid-column: 1; grid-row: auto; }
   .flow-inner:has(> .finput) .finput { min-height: 42px; }
   .flow-inner:has(> .finput) > .btn { min-height: 44px; margin-top: 6px; }
+}
+/* Phones on their side: the check-in result spans the width, the verdict on
+   the left and how today compares with her recent days on the right. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .flow-inner > .kc.level:has(.ci-read) { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); column-gap: 14px; align-content: start; }
+  .kc.level:has(.ci-read) > :not(.ci-read) { grid-column: 1; }
+  .kc.level > .ci-read { grid-column: 2; grid-row: 1 / span 4; align-self: start; font-size: 14px; gap: 4px; padding: 10px 12px; }
+}
+@media (max-height: 620px) {
+  .kc.level .ci-read { font-size: 14px; gap: 4px; padding: 10px 12px; }
 }

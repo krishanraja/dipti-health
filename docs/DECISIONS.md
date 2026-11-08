@@ -2,6 +2,17 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
+## 2026-11-08: what she puts in comes straight back
+
+Krish asked for an audit of her inputs: everything should land in the Sheet correctly and come back to her in the app, more insightful, predictive, helpful and reassuring each time. Her live Sheet was not reachable from the build session (its secrets are sensitive in Vercel and it is not in the connected Drive), so the audit ran every input through the real Code.gs in the emulator, made faithful to how Google Sheets stores dates and times.
+
+| # | Decision | By | Why / carry-forward |
+|---|---|---|---|
+| D46 | Code.gs reads date and time cells back as they were typed, on the Sheet's clock (`cellText`): "2026-11-12", "14:30", "2026-11-12 14:30", ISO for the UTC columns. The Vercel server repairs what an older Code.gs sends (`cleanCanon` in `lib/sheet.js`) | Claude | Before this, a typed time reached the app as "Sat Dec 30 1899 14:30:00 GMT+0553 …", and on a script clock behind the Sheet's an appointment showed the day before. The emulator now makes dates on the Sheet clock and turns "14:30" into a time, so tests catch it (`test/sheet.test.js`) |
+| D47 | A medicine or priority she has just added counts as checked that day; a row never checked counts from its UpdatedAt | Claude | "Are you still taking it?" straight after she added it read as the app not listening |
+| D48 | After a check-in she sees how today compares with her own recent days (lower first, the usual said once, a rise named), and how many days she has checked in this week. Today's check-in line carries the week's trend; Teeth, Tummy and liver, and Hormones and energy each open their story with her check-in scores | Claude | Each entry pays her back at once, which is what brings her back (the North Star). Compared only with herself, in words first; a rise only ever says "worth mentioning to your doctor". `public/js/insights-model.js`, tested in `test/insights-model.test.js` |
+| D49 | What she adds at the end of a check-in shows in her history and joins Ellie's long-term memory as her own words | Claude | It was saved to the Sheet but only Ellie's last eight check-ins ever saw it |
+
 ## 2026-10-24 (night): calm by default
 
 Krish: Dipti is prone to health anxiety and rabbit holes. The app should simplify and steady her, never belittle what she feels, and never make her feel she has more wrong than she does. No data is removed.

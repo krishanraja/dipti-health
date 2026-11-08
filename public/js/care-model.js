@@ -5,6 +5,7 @@
 // after", which is true of everything in her record that has no open step.
 // Statuses only repeat what the Sheet says. Pure; unit tested.
 import { conditionList, doctorFor, groupOf } from './conditions-model.js';
+import { areaCheckins } from './insights-model.js';
 
 // First match wins, in this order. The last area takes whatever is left.
 export const AREAS = [
@@ -99,6 +100,9 @@ export function storyFor(canon = {}, areaId) {
     if (areaOf(c).id !== areaId || !c.notes) continue;
     out.push({ ts: String(c.updated || c.since || ''), title: `About ${String(c.aliases || c.name).split(/\s*;\s*/)[0].toLowerCase()}`, text: String(c.notes) });
   }
+  // Her own check-in scores for this area, when it has one (teeth, tummy, energy).
+  const scores = areaCheckins(canon, areaId);
+  if (scores) out.push(scores);
   // Dates come back from the Sheet in more than one form; compare as time.
   const t = v => { const d = Date.parse(v); return Number.isNaN(d) ? 0 : d; };
   return out.sort((x, y) => t(y.ts) - t(x.ts));

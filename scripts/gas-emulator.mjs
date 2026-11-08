@@ -3,8 +3,12 @@
 // column, instead of a hand-written imitation of it.
 //
 // Sheets quirks reproduced on write (appendRow / setValue):
-//   "500" -> 500, "2026-10-12" -> Date, "2026-10-12 08:30" -> Date.
-// readCanon then stringifies every cell, exactly as it does in production.
+//   "500" -> 500, "2026-10-12" -> Date, "2026-10-12 08:30" -> Date,
+//   "14:30" -> a time (a Date on 30 Dec 1899).
+// Dates are made on the Sheet's clock (Asia/Kolkata), as Google does, while
+// this process runs on another clock (UTC here), as Apps Script can: so a
+// Code.gs that turns a Date into text without a time zone shows the day
+// before, exactly as it would in production.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -12,14 +16,26 @@ import crypto from 'node:crypto';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
+export const SHEET_TZ = 'Asia/Kolkata';
+const parts = (t, tz) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
+// The instant at which the Sheet's clock reads y-mo-d h:mi.
+function onSheetClock(y, mo, d, h = 0, mi = 0) {
+  const want = Date.UTC(y, mo, d, h, mi);
+  let t = want;
+  for (let i = 0; i < 3; i++) { const p = parts(t, SHEET_TZ); t += want - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second); }
+  return new Date(t);
+}
+
 // Mimic what Google Sheets does to a typed-in value.
 export function coerce(v) {
   if (typeof v !== 'string') return v;
   if (/^-?\d+(\.\d+)?$/.test(v) && !/^0\d/.test(v)) return Number(v);
   let m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if (m) return onSheetClock(+m[1], +m[2] - 1, +m[3]);
   m = v.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
-  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  if (m) return onSheetClock(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  m = v.match(/^(\d{1,2}):(\d{2})$/);
+  if (m && +m[1] < 24) return onSheetClock(1899, 11, 30, +m[1], +m[2]);
   return v;
 }
 
@@ -56,7 +72,7 @@ class Sheet {
 export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null } = {}) {
   const tabs = {}, props = { APP_SECRET: secret }, logs = [], locks = { released: 0 };
   const ctx = {
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, insertSheet: n => (tabs[n] = new Sheet(n, null)), getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit' }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, insertSheet: n => (tabs[n] = new Sheet(n, null)), getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit', getSpreadsheetTimeZone: () => SHEET_TZ }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     Logger: { log: m => logs.push(String(m)) },
     // Writes are serial in the emulator; the lock only has to exist.
@@ -66,9 +82,10 @@ export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null
       createTextOutput: text => ({ text, setMimeType() { return this; }, getContent() { return this.text; } }),
     },
     Utilities: {
-      formatDate: (d, tz) => {
-        const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map(x => [x.type, x.value]));
-        return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+      // Supports the patterns Code.gs uses: yyyy, MM, dd, HH, mm.
+      formatDate: (d, tz, pattern = 'yyyy-MM-dd HH:mm') => {
+        const p = parts(d.getTime(), tz);
+        return pattern.replace('yyyy', p.year).replace('MM', p.month).replace('dd', p.day).replace('HH', p.hour).replace('mm', p.minute);
       },
       getUuid: () => crypto.randomUUID(),
     },

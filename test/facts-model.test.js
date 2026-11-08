@@ -75,3 +75,15 @@ test('dates the Sheet returns as full date strings still work', () => {
   const c = { appointments: [{ id: 'A9', date: 'Thu Oct 08 2026 00:00:00 GMT+0100 (British Summer Time)', with: 'Dr Y', status: 'done' }] };
   assert.equal(appointments(c, TODAY).earlier[0].date, '2026-10-08');
 });
+
+test('a row never checked counts from when it was added or changed', () => {
+  const canon = { medications: [
+    { name: 'Just added', status: 'current', checked: '', updated: '2026-11-07' },
+    { name: 'From the import', status: 'current', checked: '', updated: '2026-10-01' },
+    { name: 'Never dated', status: 'current', checked: '', updated: '' },
+  ] };
+  const asked = factsDue(canon, '2026-11-08').map(f => f.key);
+  assert.ok(!asked.includes('Just added'));
+  assert.ok(asked.includes('From the import'));
+  assert.ok(asked.includes('Never dated'));
+});

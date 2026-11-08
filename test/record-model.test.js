@@ -84,3 +84,10 @@ test('a warmer rewrite is refused if it adds a number, a question, or drops her 
   assert.ok(!keepsFacts(d, d.replace('Thank', 'Is it bad? Should I? Thank'), parts));
   assert.ok(!keepsFacts(d, d.replace(/Dipti$/, 'D.'), parts));
 });
+
+test('what she adds at the end of a check-in shows in her history and reaches Ellie', async () => {
+  const { bank, bankText } = await import('../public/js/knowledge-bank.js');
+  const canon = { checkins: [{ tsUTC: '2026-11-07T04:00:00Z', tooth: '3', abdomen: '2', fatigue: '6', verdict: 'Steady', notes: 'Tooth worse after cold water' }] };
+  assert.match(historyEvents(canon)[0].detail, /Tooth worse after cold water/);
+  assert.match(bankText(bank(canon)), /At a check-in: Tooth worse after cold water/);
+});

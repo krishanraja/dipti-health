@@ -47,7 +47,7 @@ var TABS = {
 };
 var OPS_KEEP = 2000;
 // Shown in the app's settings, so it is easy to see this script is current.
-var VERSION = '2026-10-24b';
+var VERSION = '2026-11-08';
 var JOURNAL_PREVIEW = 400;
 
 var APPT_STATUS = ['booked', 'done', 'moved', 'cancelled'];
@@ -117,18 +117,37 @@ function col(tab, key) {
   return i + 1;
 }
 
+// The Sheet turns typed text into dates and times ("2026-11-08", "14:30").
+// Read them back as they were typed, on the Sheet's own clock, never as
+// "Sat Dec 30 1899 14:30:00 GMT+0553 ...", which can also show the wrong day
+// when the script runs on a different clock.
+var UTC_KEYS = { tsUTC: true, ts: true };
+function sheetTz() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return (ss.getSpreadsheetTimeZone && ss.getSpreadsheetTimeZone()) || TZ;
+}
+function cellText(v, key, tz) {
+  if (!(v instanceof Date)) return String(v);
+  if (isNaN(v.getTime())) return '';
+  if (key && UTC_KEYS[key]) return v.toISOString();
+  tz = tz || sheetTz();
+  if (v.getTime() < -2208988800000) return Utilities.formatDate(v, tz, 'HH:mm'); // a time on its own (before 1900)
+  var s = Utilities.formatDate(v, tz, 'yyyy-MM-dd HH:mm');
+  return s.slice(11) === '00:00' ? s.slice(0, 10) : s;
+}
+
 // Every data row as {key: text}, keyed by the app's names. One read per tab
 // (headers and rows together), so reading the whole Sheet stays fast.
 function rowObjects(name) {
   var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
   if (!s || s.getLastRow() < 1 || s.getLastColumn() < 1) return [];
-  var all = s.getDataRange().getValues(), m = {};
+  var all = s.getDataRange().getValues(), m = {}, tz = sheetTz();
   all[0].forEach(function (h, i) { var k = String(h).trim(); if (k && m[k] === undefined) m[k] = i; });
   return all.slice(1).map(function (r) {
     var o = {};
     TABS[name].cols.forEach(function (c) {
       var i = m[c[0]];
-      o[c[1]] = i === undefined || r[i] === undefined ? '' : String(r[i]);
+      o[c[1]] = i === undefined || r[i] === undefined ? '' : cellText(r[i], c[1], tz);
     });
     return o;
   });
@@ -177,8 +196,8 @@ function updateFields(tab, row, p, keys, label, by) {
   keys.forEach(function (k) {
     if (p[k] === undefined) return;
     var c = col(tab, k);
-    var oldV = s.getRange(row, c).getValue();
-    if (String(oldV) === String(p[k])) return;
+    var oldV = cellText(s.getRange(row, c).getValue(), k);
+    if (oldV === String(p[k])) return;
     s.getRange(row, c).setValue(p[k]);
     logChange(tab, label + '.' + k, oldV, p[k], by, 'app');
   });
@@ -334,7 +353,8 @@ var ACTIONS = {
     var bad = need(p, ['title']);
     if (bad) return err(bad);
     var id = nextId('Priorities', 'P');
-    appendObj('Priorities', { id: id, rank: String(p.rank || getRows('Priorities').length + 1), title: p.title, status: p.status || 'now', why: p.why || '', plan: p.plan || '', nextStep: p.nextStep || '', askWhom: p.askWhom || '', updated: nowUTC().slice(0, 10) });
+    // Just added, so just confirmed: the fact checker does not ask straight away.
+    appendObj('Priorities', { id: id, rank: String(p.rank || getRows('Priorities').length + 1), title: p.title, status: p.status || 'now', why: p.why || '', plan: p.plan || '', nextStep: p.nextStep || '', askWhom: p.askWhom || '', updated: nowUTC().slice(0, 10), checked: nowUTC().slice(0, 10) });
     logChange('Priorities', id, '(none)', p.title, by, 'app');
     return json({ ok: true, id: id });
   },
@@ -438,7 +458,7 @@ var ACTIONS = {
       appendObj('Profile', { key: p.key, value: p.value, source: 'app', updated: today, verified: 'no' });
       logChange('Profile', p.key, '(none)', p.value, by, 'app');
     } else {
-      var oldV = s.getRange(r, col('Profile', 'value')).getValue();
+      var oldV = cellText(s.getRange(r, col('Profile', 'value')).getValue(), 'value');
       s.getRange(r, col('Profile', 'value')).setValue(p.value);
       s.getRange(r, col('Profile', 'source')).setValue('app');
       s.getRange(r, col('Profile', 'updated')).setValue(today);
@@ -469,7 +489,7 @@ var ACTIONS = {
     var r = findRow('Medications', 'name', p.name);
     var today = nowUTC().slice(0, 10);
     if (r < 0) {
-      appendObj('Medications', { name: p.name, generic: p.generic || '', dose: p.dose || '', timing: p.timing || '', rx: p.rx || '', purpose: p.purpose || '', status: p.status || 'current', source: 'app', updated: today });
+      appendObj('Medications', { name: p.name, generic: p.generic || '', dose: p.dose || '', timing: p.timing || '', rx: p.rx || '', purpose: p.purpose || '', status: p.status || 'current', source: 'app', updated: today, checked: today });
       logChange('Medications', p.name, '(none)', p.status || 'current', by, 'app');
     } else {
       updateFields('Medications', r, p, ['generic', 'dose', 'timing', 'purpose', 'status'], p.name, by);

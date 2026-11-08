@@ -155,3 +155,47 @@ test('the app expects the same script version Code.gs reports', async () => {
   const { SHEET_VERSION } = await import('../api/status.js');
   assert.equal(/var VERSION = '([^']+)'/.exec(gs)[1], SHEET_VERSION);
 });
+
+// Her Sheet turns typed text into dates and times, on its own clock. The
+// emulator does the same; on a machine whose clock differs from the Sheet's,
+// so a date read back without the Sheet's time zone would show the day before.
+test('dates and times come back exactly as typed, on the Sheet clock', () => {
+  const api = createSheetApi({ secret: 's' });
+  api.post({ secret: 's', action: 'appointment', by: 'Dipti', payload: { date: '2026-11-12', time: '14:30', with: 'Dr Invented' } });
+  api.post({ secret: 's', action: 'testResult', by: 'Dipti', payload: { date: '2026-11-05', test: 'Invented test', result: '2.1' } });
+  api.post({ secret: 's', action: 'checkin', by: 'Dipti', payload: { answers: { tooth: 3, abdomen: 2, fatigue: 5, sleep: 'ok', bowels: 'normal', mood: 'ok' } } });
+  const c = api.get({ secret: 's', action: 'read' });
+  assert.equal(c.appointments[0].date, '2026-11-12');
+  assert.equal(c.appointments[0].time, '14:30');
+  assert.match(c.appointments[0].checked, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(c.testResults[0].date, '2026-11-05');
+  assert.match(c.checkins[0].tsLocal, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  assert.match(c.checkins[0].tsUTC, /Z$/);
+  // Moving it to the same time logs nothing; a real move logs plain dates.
+  api.post({ secret: 's', action: 'appointment', by: 'Dipti', payload: { id: 'A1', time: '14:30', date: '2026-11-13' } });
+  const log = api.get({ secret: 's', action: 'read' }).changelog.filter(x => x.tab === 'Appointments');
+  assert.deepEqual(log.slice(1).map(x => [x.key, x.old, x.new]), [['A1.date', '2026-11-12', '2026-11-13']]);
+});
+
+test('a medicine or priority she has just added is not asked about straight away', () => {
+  const api = createSheetApi({ secret: 's' });
+  api.post({ secret: 's', action: 'medication', by: 'Dipti', payload: { name: 'Invented medicine', dose: '5 mg' } });
+  api.post({ secret: 's', action: 'priority', by: 'Dipti', payload: { title: 'Invented priority' } });
+  const c = api.get({ secret: 's', action: 'read' });
+  assert.match(c.medications[0].checked, /^\d{4}-\d{2}-\d{2}$/);
+  assert.match(c.priorities[0].checked, /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('the server repairs dates an older Code.gs sent as long date strings', async () => {
+  const { cleanCell, cleanCanon } = await import('../lib/sheet.js');
+  // An older script on a UTC clock: midnight on the Sheet clock is 18:30 the day before.
+  assert.equal(cleanCell('Wed Nov 11 2026 18:30:00 GMT+0000 (Coordinated Universal Time)', 'date'), '2026-11-12');
+  assert.equal(cleanCell('Thu Nov 12 2026 00:00:00 GMT+0530 (India Standard Time)', 'date'), '2026-11-12');
+  assert.equal(cleanCell('Sat Dec 30 1899 14:30:00 GMT+0553 (India Standard Time)', 'time'), '14:30');
+  assert.equal(cleanCell('Sun Nov 08 2026 14:30:00 GMT+0530 (India Standard Time)', 'tsLocal'), '2026-11-08 14:30');
+  assert.equal(cleanCell('Sun Nov 08 2026 14:30:00 GMT+0530 (India Standard Time)', 'tsUTC'), '2026-11-08T09:00:00.000Z');
+  assert.equal(cleanCell('Plain text', 'notes'), 'Plain text');
+  const c = cleanCanon({ ok: true, appointments: [{ date: 'Thu Nov 12 2026 00:00:00 GMT+0530 (India Standard Time)', with: 'X' }], meta: { a: 'b' }, sheetUrl: 'u' });
+  assert.deepEqual(c.appointments[0], { date: '2026-11-12', with: 'X' });
+  assert.equal(c.sheetUrl, 'u');
+});

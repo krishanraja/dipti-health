@@ -3,7 +3,7 @@
 import { requireAuth } from '../lib/auth.js';
 import { pingSheet } from '../lib/sheet.js';
 
-export const SHEET_VERSION = '2026-10-24b';
+export const SHEET_VERSION = '2026-11-08';
 export const NEEDED = ['feedback', 'journal', 'chat', 'check', 'appointment'];
 
 export default async function handler(req, res) {

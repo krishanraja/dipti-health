@@ -16,7 +16,9 @@ export const dayOf = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { time
 // The Sheet can hand a date back as "2026-10-08" or as a full date string.
 const iso = s => { const p = parseDate(s); return p ? `${p.y}-${String(p.m + 1).padStart(2, '0')}-${String(p.d).padStart(2, '0')}` : ''; };
 const days = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
-const since = (checked, today) => (iso(checked) ? days(iso(checked), today) : 999);
+// A row never checked counts from when it was last added or changed: a
+// medicine she has just added is not asked about straight away.
+const since = (checked, today, updated) => (iso(checked) ? days(iso(checked), today) : iso(updated) ? days(iso(updated), today) : 999);
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -62,14 +64,14 @@ export function factsDue(canon, today = dayOf()) {
   ap.upcoming.filter(a => days(today, a.date) <= 3 && since(a.checked, today) >= 2).forEach(a => add({ tab: 'Appointments', key: a.id, kind: 'apptSoon', row: a, rank: 1, age: since(a.checked, today),
     question: `Still on: ${a.with}, ${whenText(a.date, a.time, today)}?`, says: [a.where, a.for].filter(Boolean).join(' · ') }));
   (canon.medications || []).filter(m => m.name && m.status !== 'stopped').forEach(m => {
-    const age = since(m.checked, today);
+    const age = since(m.checked, today, m.updated);
     if (age < STALE_DAYS) return;
     add({ tab: 'Medications', key: m.name, kind: 'med', row: m, rank: m.status === 'check' ? 2 : 4, age,
       question: `Are you still taking ${m.name}${m.dose ? ', ' + m.dose : ''}${m.timing ? ' ' + m.timing : ''}?`,
       says: m.status === 'check' && m.rx ? `Last prescription: ${m.rx}` : '' });
   });
   priorities(canon).filter(p => /^(now|waiting|better)$/.test(p.status)).forEach(p => {
-    const age = since(p.checked, today);
+    const age = since(p.checked, today, p.updated);
     if (age < STALE_DAYS) return;
     const what = String(p.title).replace(/\s*\(.*?\)\s*/g, ' ').trim();
     add({ tab: 'Priorities', key: p.id, kind: 'symptom', row: p, rank: 3, age, question: `How is your ${what.toLowerCase()} now?`, says: '' });

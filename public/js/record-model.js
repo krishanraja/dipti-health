@@ -78,7 +78,7 @@ export function historyEvents(canon) {
   }
   ev.push(...concerns.values());
   for (const c of canon?.checkins || []) {
-    ev.push({ key: dateKey(c.tsUTC || c.tsLocal), ts: c.tsUTC || '', kind: 'checkin', title: `Check-in: ${c.verdict}`, detail: `Tooth ${c.tooth} · tummy ${c.abdomen} · tiredness ${c.fatigue}` });
+    ev.push({ key: dateKey(c.tsUTC || c.tsLocal), ts: c.tsUTC || '', kind: 'checkin', title: `Check-in: ${c.verdict}`, detail: `Tooth ${c.tooth} · tummy ${c.abdomen} · tiredness ${c.fatigue}${c.notes ? '. ' + clip(c.notes, 80) : ''}` });
   }
   for (const q of canon?.questions || []) {
     if (q.status === 'answered' && q.answer) ev.push({ key: dateKey(q.updated), ts: '', kind: 'answer', title: 'Doctor answered', detail: clip(`${q.question} ${q.answer}`, 90) });

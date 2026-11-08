@@ -1,5 +1,16 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-11-08: input audit (D46–D49)
+
+- [x] Dates and times read back as typed: `cellText` in Code.gs; `cleanCell`/`cleanCanon` in `lib/sheet.js` for an older Code.gs. The emulator (`scripts/gas-emulator.mjs`) now makes dates on the Sheet clock (Asia/Kolkata) and turns "14:30" into a time, so a script that forgets the time zone fails `test/sheet.test.js`.
+- [x] New medicines and priorities get CheckedAt on add (Code.gs); `facts-model.js` falls back to UpdatedAt, so this works before the paste.
+- [x] `public/js/insights-model.js`: `afterCheckin` (result screen in `today.js`), `todayTrend` (Today's check-in line), `areaCheckins` (first story item in My care for teeth, gut, hormones).
+- [x] Check-in notes in `historyEvents` (`record-model.js`) and in the bank's `said` (`knowledge-bank.js`).
+- [ ] Krish: paste Code.gs 2026-11-08, run `setup()`, publish a new version.
+- [ ] Not verified on her real record: the live Sheet was not readable from this session. Next session with access: count rows with By = Dipti this week (the North Star), check her CheckIns, Appointments and Medications tabs read back cleanly in the app, and run `scripts/noscroll.mjs` on her real record.
+- [ ] Pre-existing, not from this change: `noscroll --quick` flags "care area hormones" pages at 568×320 as too tall (fixture data). Present on 0a768ae before these edits.
+- [ ] The wide overview (`dashboard.js`) does not show the new trend line yet.
+
 ## 2026-10-24 (night): calm by default (D38–D43)
 
 - [x] `public/js/care-model.js` (areas, tags, Today's line), tested in `test/conditions-model.test.js`.
