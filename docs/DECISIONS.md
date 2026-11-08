@@ -2,7 +2,7 @@
 
 Append-mostly. Newest first. Each one gives the decision, who made it, and why.
 
-## 2026-11-08: what she puts in comes straight back
+## 2026-11-08: what she puts in comes straight back (D46–D54)
 
 Krish asked for an audit of her inputs: everything should land in the Sheet correctly and come back to her in the app, more insightful, predictive, helpful and reassuring each time. The first pass ran every input through the real Code.gs in the emulator; Krish then shared her Sheet with the session (read-only), and the second pass used her real rows: Changelog, _Ops, CheckIns, Notes, Feedback, Medications, Questions. Nothing personal from it is in this repo.
 
@@ -18,6 +18,7 @@ What her Sheet showed (to 8 Nov): entries on 23–24 Oct, 26–27 Oct and 3 Nov;
 | D51 | The + menu's medicine change offers "One not on this list: started or stopped". Stopping one records the medicine as stopped and a dated note in her words. Saves lock after one tap | Claude, from her feedback | Her feedback (26 Oct): she had stopped a medicine that was not on her list and could not find where to say so. Her medicine saves were also arriving twice |
 | D52 | When a check-in note names a medicine on her list (brand or generic), the result offers "Update my list", opening that medicine's change screen | Claude, from her check-ins | Her 27 Oct note recorded a dose change that never reached her list |
 | D53 | Questions Ellie suggests that are already on her list (near-identical wording) are not added again | Claude, from her Questions tab | Two of her questions were added twice |
+| D54 | A daily check-in reminder: one email at about 7 pm India time, only on a day with no check-in, sent by the Sheet's script. It says nothing about her health and opens the check-in in one tap (`?checkin=1`). Off until Krish sets REMINDER_TO and runs `setupReminder()` | Krish asked for it; Claude chose email | Two check-ins in her first fortnight. Email needs no new keys, service or install; web push would need a home-screen install on iPhone, push keys and a scheduler. Revisit if she ignores the emails for two weeks |
 
 ## 2026-10-24 (night): calm by default
 

@@ -1,5 +1,13 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-11-08 (later): daily check-in reminder (D54)
+
+- [x] `dailyReminder`, `setupReminder`, `stopReminder` in Code.gs; emulator has `MailApp` and `ScriptApp`; test in `test/sheet.test.js`.
+- [x] `?checkin=1` in `public/app.js` opens the check-in after the record loads, then clears the address.
+- [x] Merged to `claude/magical-mayer-ojpf7z`.
+- [ ] Krish: paste Code.gs 2026-11-08b, run `setup()`, publish; set `REMINDER_TO`, run `setupReminder()`.
+- [ ] Watch: does she check in on reminder days? Each email sent is a `reminder-YYYY-MM-DD` row in `_Ops`.
+
 ## 2026-11-08: input audit (D46–D53)
 
 - [x] Dates and times read back as typed: `cellText` in Code.gs; `cleanCell`/`cleanCanon` in `lib/sheet.js` for an older Code.gs. The emulator (`scripts/gas-emulator.mjs`) now makes dates on the Sheet clock (Asia/Kolkata) and turns "14:30" into a time, so a script that forgets the time zone fails `test/sheet.test.js`.

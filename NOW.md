@@ -3,7 +3,7 @@ repo: krishanraja/dipti-health
 product: Holistic
 as_of: 2026-10-24
 head: see git log
-lifecycle: deployed (production branch claude/magical-mayer-ojpf7z)
+lifecycle: deployed (production branch claude/magical-mayer-ojpf7z; input audit merged 8 Nov)
 production_url: https://www.xrds.au (xrds.au redirects; dipti-health.vercel.app also works)
 state_doc: README.md
 history_log: docs/DECISIONS.md
@@ -46,6 +46,7 @@ Results (8 Nov, invented fixture): `npm test` 111/111 (also under TZ=Asia/Kolkat
 
 ## What changed recently
 
+- 8 Nov 2026: daily check-in reminder by email, off until armed (D54).
 - 8 Nov 2026: input audit against her real Sheet. Dates and times come back as typed; "Still right?" no longer loses answers to a second tap; she can record stopping a medicine that is not on her list; a check-in note that names a medicine offers to update it; Ellie no longer re-adds questions she already has; after each check-in she sees how today compares with her own recent days, and Today and My care carry her trends (D46–D53).
 
 - 23 Oct 2026: first build. See `docs/DECISIONS.md` (D1–D11).
@@ -57,7 +58,8 @@ Results (8 Nov, invented fixture): `npm test` 111/111 (also under TZ=Asia/Kolkat
 
 ## What is next and waiting on Krish
 
-0. Merge `ccr-37a2b70e-959prm` into the production branch. Then paste the new `apps-script/Code.gs` (version 2026-11-08), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app repairs dates on the server, but times are exact only with the new script.
+0. Merged to production 8 Nov. Paste the new `apps-script/Code.gs` (version 2026-11-08b), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app repairs dates on the server, but times are exact only with the new script.
+0a. Turn on the daily check-in reminder (D54): Project Settings › Script properties › add `REMINDER_TO` = Dipti's email (optionally `REMINDER_HOUR`, default 19, India time), then run `setupReminder()` once and allow the permissions. `stopReminder()` turns it off.
 0b. On her Medications tab, five rows she confirmed on 26 Oct have no CheckedAt (lost to the double-tap bug, D50), so she will be asked about them again; that is expected and harmless. Her latest check-in note mentions a dose change that is not on her list yet.
 
 1. Paste the new `apps-script/Code.gs`, run `setup()` (it adds the `_Journal` tab, and Feedback, `_Chats` and `_Ops` if missing), and publish a new version of the deployment. Until then the app works through fallbacks, but replays are not de-duplicated and Feedback cannot save.

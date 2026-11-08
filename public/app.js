@@ -1,4 +1,4 @@
-import { mountToday, refreshToday, factFlow } from '/js/today.js';
+import { mountToday, refreshToday, factFlow, startCheckin } from '/js/today.js';
 import { mountRecord, refreshRecord, recordHome, recordSpoke, openSheet } from '/js/record.js';
 import { resultsText } from '/js/speech.js';
 import { canRecord, startRecording, transcribeBlob } from '/js/recorder.js';
@@ -209,9 +209,13 @@ async function boot() {
   document.querySelectorAll('[data-ask-label]').forEach(s => { s.textContent = `Ask ${DOCTOR.first}`; });
   $('#login').hidden = true; $('#app').hidden = false;
   buildToday(); buildRecord(); buildConditions(); buildChat(); mountFeedback($('#fb'), ctx()); mountConsole(ctx());
-  go(store.get('view', 'today'));
+  // The evening reminder's link (?checkin=1) opens the check-in straight away.
+  const wantsCheckin = new URLSearchParams(location.search).get('checkin') === '1';
+  if (wantsCheckin) history.replaceState(null, '', location.pathname);
+  go(wantsCheckin ? 'today' : store.get('view', 'today'));
   await flushQueue();
-  loadCanon();
+  const loaded = loadCanon();
+  if (wantsCheckin) { await loaded; startCheckin(); }
   checkPending();
 }
 

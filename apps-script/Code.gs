@@ -47,7 +47,7 @@ var TABS = {
 };
 var OPS_KEEP = 2000;
 // Shown in the app's settings, so it is easy to see this script is current.
-var VERSION = '2026-11-08';
+var VERSION = '2026-11-08b';
 var JOURNAL_PREVIEW = 400;
 
 var APPT_STATUS = ['booked', 'done', 'moved', 'cancelled'];
@@ -530,6 +530,69 @@ function upgradeTab(name) {
     added.push(c[0]);
   });
   return added;
+}
+
+/* ---------- daily check-in reminder ---------- */
+
+// One short email in the evening, only on a day she has not checked in. It
+// says nothing about her health (email is less private than her Sheet); it
+// opens the check-in in one tap. Off until Krish arms it:
+//   1. Project Settings > Script properties: add REMINDER_TO = her email.
+//      Optional: REMINDER_HOUR (0-23, India time, default 19).
+//   2. Run setupReminder() once and allow the permissions it asks for.
+// stopReminder() turns it off. Each email sent is a row in _Ops.
+var APP_URL = 'https://www.xrds.au/?checkin=1';
+var REMINDER_HOUR = 19;
+
+function reminderTo() {
+  var p = PropertiesService.getScriptProperties().getProperty('REMINDER_TO');
+  return p ? String(p).trim() : '';
+}
+
+// Has she checked in today (India time)? Any check-in counts, hers or one
+// made for her.
+function checkedInToday() {
+  var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  return rowObjects('CheckIns').some(function (c) {
+    var t = Date.parse(c.tsUTC);
+    return !isNaN(t) && Utilities.formatDate(new Date(t), TZ, 'yyyy-MM-dd') === today;
+  });
+}
+
+function dailyReminder() {
+  var to = reminderTo();
+  if (!to) return { sent: false, why: 'no REMINDER_TO' };
+  if (checkedInToday()) return { sent: false, why: 'checked in today' };
+  MailApp.sendEmail({
+    to: to,
+    name: 'Holistic',
+    subject: 'How are you today?',
+    body: 'Hi Dipti,\n\nA 30-second check-in, whenever suits you this evening:\n' + APP_URL +
+      '\n\nEach one helps you and your doctors see how things are moving.\n\nHolistic',
+    htmlBody: '<p>Hi Dipti,</p><p>A 30-second check-in, whenever suits you this evening.</p>' +
+      '<p><a href="' + APP_URL + '" style="display:inline-block;padding:12px 20px;border-radius:12px;background:#0f6e64;color:#fff;text-decoration:none;font-weight:600">Check in now</a></p>' +
+      '<p style="color:#666">Each one helps you and your doctors see how things are moving.</p>'
+  });
+  var ops = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('_Ops');
+  if (ops) appendObj('_Ops', { opId: 'reminder-' + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), ts: nowUTC(), action: 'reminder', result: '{"sent":true}' });
+  return { sent: true };
+}
+
+function stopReminder() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'dailyReminder') ScriptApp.deleteTrigger(t);
+  });
+  Logger.log('Daily reminder is off.');
+}
+
+function setupReminder() {
+  if (!reminderTo()) throw new Error('Add REMINDER_TO (her email) in Project Settings > Script properties first.');
+  stopReminder(); // never two
+  var raw = PropertiesService.getScriptProperties().getProperty('REMINDER_HOUR');
+  var h = raw === null || String(raw).trim() === '' ? NaN : Number(raw);
+  var hour = h >= 0 && h <= 23 && Math.round(h) === h ? h : REMINDER_HOUR;
+  ScriptApp.newTrigger('dailyReminder').timeBased().everyDays(1).atHour(hour).inTimezone(TZ).create();
+  Logger.log('Daily reminder is on: about ' + hour + ':00 India time to ' + reminderTo() + ', only on days without a check-in.');
 }
 
 /* ---------- entry points ---------- */

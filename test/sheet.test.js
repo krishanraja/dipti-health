@@ -197,3 +197,22 @@ test('the server repairs dates an older Code.gs sent as long date strings', asyn
   assert.deepEqual(c.appointments[0], { date: '2026-11-12', with: 'X' });
   assert.equal(c.sheetUrl, 'u');
 });
+
+test('daily reminder: off until armed, never twice, only on a day without a check-in', () => {
+  const api = createSheetApi({ secret: 's' });
+  assert.deepEqual(JSON.parse(JSON.stringify(api.run('dailyReminder'))), { sent: false, why: 'no REMINDER_TO' });
+  assert.throws(() => api.run('setupReminder'), /REMINDER_TO/);
+  api.props.REMINDER_TO = 'someone@example.com';
+  api.run('setupReminder'); api.run('setupReminder');
+  assert.equal(api.triggers.length, 1);
+  assert.deepEqual([api.triggers[0].fn, api.triggers[0].hour, api.triggers[0].tz, api.triggers[0].days], ['dailyReminder', 19, 'Asia/Kolkata', 1]);
+  assert.equal(api.run('dailyReminder').sent, true);
+  assert.equal(api.mail.length, 1);
+  assert.match(api.mail[0].htmlBody, /https:\/\/www\.xrds\.au\/\?checkin=1/);
+  assert.doesNotMatch(api.mail[0].body, /tooth|tummy|pain|medicine/i); // nothing about her health in an email
+  api.post({ secret: 's', action: 'checkin', by: 'Dipti', payload: { answers: { tooth: 1, abdomen: 1, fatigue: 1, sleep: 'ok', bowels: 'normal', mood: 'ok' } } });
+  assert.equal(api.run('dailyReminder').why, 'checked in today');
+  assert.equal(api.mail.length, 1);
+  api.run('stopReminder');
+  assert.equal(api.triggers.length, 0);
+});

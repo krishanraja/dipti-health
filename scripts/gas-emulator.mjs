@@ -69,13 +69,19 @@ class Sheet {
 }
 
 export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null } = {}) {
-  const tabs = {}, props = { APP_SECRET: secret }, logs = [], locks = { released: 0 };
+  const tabs = {}, props = { APP_SECRET: secret }, logs = [], locks = { released: 0 }, mail = [], triggers = [];
   const ctx = {
     SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => tabs[n] || null, insertSheet: n => (tabs[n] = new Sheet(n, null)), getUrl: () => 'https://docs.google.com/spreadsheets/d/mock-sheet/edit', getSpreadsheetTimeZone: () => SHEET_TZ }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     Logger: { log: m => logs.push(String(m)) },
     // Writes are serial in the emulator; the lock only has to exist.
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() { locks.released++; } }) },
+    MailApp: { sendEmail: o => { mail.push(o); } },
+    ScriptApp: {
+      getProjectTriggers: () => triggers.slice(),
+      deleteTrigger: t => { triggers.splice(triggers.indexOf(t), 1); },
+      newTrigger: fn => { const t = { fn, getHandlerFunction: () => fn }; const b = { timeBased: () => b, everyDays: n => { t.days = n; return b; }, atHour: h => { t.hour = h; return b; }, inTimezone: z => { t.tz = z; return b; }, create: () => { triggers.push(t); return t; } }; return b; },
+    },
     ContentService: {
       MimeType: { JSON: 'application/json' },
       createTextOutput: text => ({ text, setMimeType() { return this; }, getContent() { return this.text; } }),
@@ -101,8 +107,9 @@ export function createSheetApi({ secret = 'mock', seed = null, oldHeaders = null
   if (seed) seedTabs(tabs, seed, vm.runInContext('TABS', ctx));
 
   return {
-    tabs, logs, locks,
+    tabs, logs, locks, mail, triggers, props,
     setup: () => ctx.setup(),
+    run: name => ctx[name](),
     get: params => JSON.parse(ctx.doGet({ parameter: params }).getContent()),
     post: body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent()),
   };
