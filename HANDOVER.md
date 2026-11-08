@@ -1,13 +1,17 @@
 # HANDOVER: for the next AI taking over
 
-## 2026-11-08: input audit (D46–D49)
+## 2026-11-08: input audit (D46–D53)
 
 - [x] Dates and times read back as typed: `cellText` in Code.gs; `cleanCell`/`cleanCanon` in `lib/sheet.js` for an older Code.gs. The emulator (`scripts/gas-emulator.mjs`) now makes dates on the Sheet clock (Asia/Kolkata) and turns "14:30" into a time, so a script that forgets the time zone fails `test/sheet.test.js`.
 - [x] New medicines and priorities get CheckedAt on add (Code.gs); `facts-model.js` falls back to UpdatedAt, so this works before the paste.
 - [x] `public/js/insights-model.js`: `afterCheckin` (result screen in `today.js`), `todayTrend` (Today's check-in line), `areaCheckins` (first story item in My care for teeth, gut, hormones).
 - [x] Check-in notes in `historyEvents` (`record-model.js`) and in the bank's `said` (`knowledge-bank.js`).
 - [ ] Krish: paste Code.gs 2026-11-08, run `setup()`, publish a new version.
-- [ ] Not verified on her real record: the live Sheet was not readable from this session. Next session with access: count rows with By = Dipti this week (the North Star), check her CheckIns, Appointments and Medications tabs read back cleanly in the app, and run `scripts/noscroll.mjs` on her real record.
+- [x] Her real Sheet read (read-only, shared with the Drive connector on 8 Nov): findings and fixes D50–D53. Sheet time zone is America/Los_Angeles; the emulator matches it.
+- [x] `factFlow` in `today.js` advances at once and queues writes; `console.js` saves lock after one tap and offer "One not on this list: started or stopped"; `medsMentioned` (insights-model) drives "Update my list" after a check-in; `newQuestions` (record-model) stops Ellie re-adding questions.
+- [ ] Not run: `scripts/noscroll.mjs` on her real record (it needs her record loaded locally; this session only read it through the Sheets connector). Ran on the invented fixture.
+- [ ] Real-model check: none of this changes Ellie's prompt, but `bankText` now carries her check-in notes; watch the first replies.
+- [ ] Only two check-ins in her Sheet so far: the new trend lines need a few more before they say much. Worth asking Krish whether a gentle evening check-in reminder is wanted.
 - [ ] Pre-existing, not from this change: `noscroll --quick` flags "care area hormones" pages at 568×320 as too tall (fixture data). Present on 0a768ae before these edits.
 - [ ] The wide overview (`dashboard.js`) does not show the new trend line yet.
 

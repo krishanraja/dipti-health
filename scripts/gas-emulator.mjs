@@ -5,10 +5,9 @@
 // Sheets quirks reproduced on write (appendRow / setValue):
 //   "500" -> 500, "2026-10-12" -> Date, "2026-10-12 08:30" -> Date,
 //   "14:30" -> a time (a Date on 30 Dec 1899).
-// Dates are made on the Sheet's clock (Asia/Kolkata), as Google does, while
-// this process runs on another clock (UTC here), as Apps Script can: so a
-// Code.gs that turns a Date into text without a time zone shows the day
-// before, exactly as it would in production.
+// Dates are made on the Sheet's clock, as Google does. Her Sheet is on Los
+// Angeles time (seen 8 Nov 2026) while the app thinks in India time, so the
+// emulator uses Los Angeles too.
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -16,7 +15,7 @@ import crypto from 'node:crypto';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 
-export const SHEET_TZ = 'Asia/Kolkata';
+export const SHEET_TZ = 'America/Los_Angeles';
 const parts = (t, tz) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
 // The instant at which the Sheet's clock reads y-mo-d h:mi.
 function onSheetClock(y, mo, d, h = 0, mi = 0) {

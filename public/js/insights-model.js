@@ -74,7 +74,7 @@ export function afterCheckin(canon, answers, now = new Date()) {
   const lines = [...out.filter(x => x.rank === 0).map(x => x.text), ...usualText, ...out.filter(x => x.rank === 2).map(x => x.text)];
   // Days this week with a check-in, today's included.
   const days = new Set([...checkinRows(canon).filter(c => t - c.t < 7 * DAY && c.t <= t).map(c => dayKey(c.t)), dayKey(t)]).size;
-  if (days >= 3) lines.push(`That is ${days} days you have checked in this week. Each one makes the picture clearer for your doctors.`);
+  if (days >= 3) lines.push(`${days} days checked in this week. Each one helps your doctors see the pattern.`);
   return { first: false, lines: lines.slice(0, 4) };
 }
 
@@ -106,4 +106,17 @@ export function areaCheckins(canon, areaId, now = new Date()) {
     : tr.dir === 'steady' ? `Steady: about ${w} this week, much as the week before.`
     : `Your last check-ins: ${recent} out of 10.`;
   return { ts: last?.tsUTC || '', title: 'Your check-ins', text: `${lower(s.label)} ${tr.dir ? `(${recent} out of 10). ` : ''}${words}`.replace(/^./, c => c.toUpperCase()) + (climbing(canon, s.key) && tr.dir !== 'higher' ? ' It has gone up three check-ins running; worth a word with your doctor.' : '') };
+}
+
+// Medicines on her list that a note names, by brand or generic. A check-in
+// note of hers (27 Oct) recorded a dose change that never reached her list;
+// this lets the app offer to update it there and then.
+export function medsMentioned(canon = {}, text = '') {
+  const t = String(text || '').toLowerCase();
+  if (!t.trim()) return [];
+  const stem = w => String(w || '').toLowerCase().match(/[a-z][a-z-]{3,}/)?.[0]?.slice(0, 5) || '';
+  return (canon.medications || []).filter(m => m.name && m.status !== 'stopped').filter(m => {
+    const stems = [stem(m.name), stem(m.generic)].filter(s => s.length >= 4);
+    return stems.some(s => new RegExp(`\\b${s.replace(/[-]/g, '\\-')}`).test(t));
+  }).map(m => m.name);
 }

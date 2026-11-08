@@ -34,7 +34,7 @@ test('after a check-in: easing first, the usual said once, a rise named, days co
   assert.match(r.lines[0], /^Tooth pain is lower than your recent days \(3, from about 6\)/);
   assert.equal(r.lines[1], 'Tummy pain is about your usual.');
   assert.match(r.lines[2], /^Tiredness is higher/);
-  assert.match(r.lines[3], /4 days you have checked in this week/);
+  assert.match(r.lines[3], /^4 days checked in this week/);
   const same = afterCheckin(canon, { tooth: 6, abdomen: 2, fatigue: 4 }, now);
   assert.equal(same.lines[0], 'Tooth pain, tummy pain and tiredness are about your usual.');
 });
@@ -58,4 +58,17 @@ test('works on the fixture and on Sheet-shaped dates', () => {
   assert.ok(areaCheckins(f, 'teeth'));
   const sheet = { checkins: [{ tsUTC: '', tsLocal: '2026-11-07 09:30', tooth: '4', abdomen: '1', fatigue: '5' }] };
   assert.equal(daysThisWeek(sheet, now), 1);
+});
+
+test('a note that names a medicine on her list is spotted, by brand or generic', async () => {
+  const { medsMentioned } = await import('../public/js/insights-model.js');
+  const canon = { medications: [
+    { name: 'Sleepzo', generic: 'dormazapine', status: 'current' },
+    { name: 'Moodex', generic: 'calmoxetine', status: 'current' },
+    { name: 'Old one', generic: 'oldamine', status: 'stopped' },
+  ] };
+  assert.deepEqual(medsMentioned(canon, 'When I take the full sleepzo i sleep well. From today I am taking 3/4'), ['Sleepzo']);
+  assert.deepEqual(medsMentioned(canon, 'Started calmoxetine in the morning'), ['Moodex']);
+  assert.deepEqual(medsMentioned(canon, 'stopped oldamine'), []);
+  assert.deepEqual(medsMentioned(canon, 'slept badly'), []);
 });

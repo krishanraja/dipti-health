@@ -6,7 +6,7 @@ import { triage, CONTACTS, CONTACTS_SELF } from './triage.js';
 import { createAvatar } from './avatar.js';
 import { DOCTOR } from './persona.js';
 import { lastCheckin } from './dipti-model.js';
-import { priorities } from './record-model.js';
+import { priorities, newQuestions } from './record-model.js';
 import { canRecord, startRecording, transcribeBlob, fmtTime } from './recorder.js';
 import { pickPhoto, shrink } from './photo.js';
 import { bank, bankItems, bankSize, forgetNote } from './knowledge-bank.js';
@@ -573,8 +573,10 @@ async function saveResults(m, n) {
 
 async function addQuestions(qs, btn) {
   btn.disabled = true; btn.textContent = 'Adding';
+  const fresh = newQuestions(ctx.canon(), qs);
+  if (!fresh.length) { btn.textContent = 'Already on your list ✓'; return; }
   let ok = true;
-  for (const q of qs) ok = (await ctx.save('question', { question: q, askWhom: 'Any doctor', priority: '2' })).ok && ok;
+  for (const q of fresh) ok = (await ctx.save('question', { question: q, askWhom: 'Any doctor', priority: '2' })).ok && ok;
   btn.textContent = ok ? 'Added to the record ✓' : 'Will save when online';
   ctx.reload?.();
 }

@@ -24,8 +24,8 @@ Dipti, day to day. Krish signs in to help, and his entries are credited to him.
 
 ## Where it is right now
 
-<!-- north-star-state {"week_of":"2026-11-02","week_target":1,"current":null,"urgency":"U4","urgency_reason":"North Star is still a proposal; the app is live but her Sheet was not readable from the 8 Nov build session, so this week's count is not measured"} -->
-North Star: **proposed, not set** (see `docs/NORTH_STAR.md`). The app is live at www.xrds.au and in use, but this week's count (rows with By = Dipti) was not measured: her Sheet was not readable from the 8 Nov session. Urgency is U4 until someone counts it.
+<!-- north-star-state {"week_of":"2026-11-02","week_target":1,"current":1,"urgency":"U3","urgency_reason":"Read from her Sheet on 8 Nov: one day with entries by Dipti this week (3 Nov, 16 rows), on the week's target of 1, but nothing since 3 Nov and only two check-ins ever; urgency is Claude's reading, not yet checked against the harness contract"} -->
+North Star: **proposed, not set** (see `docs/NORTH_STAR.md`). Measured from her Sheet on 8 Nov, counting days with an entry by Dipti: week of 26 Oct, 2 days (24 rows); week of 2 Nov, 1 day so far (3 Nov, 16 rows), which meets this week's target of 1. Nothing since 3 Nov, and only two check-ins in total. Urgency U3 (Claude's reading).
 
 What is built and verified locally:
 
@@ -42,11 +42,11 @@ What is built and verified locally:
 - Fact checker (D18 to D21): a few "still right?" checks a day, an Appointments tab, and Ellie proposing Sheet updates that Dipti confirms. Every confirm or correction is a row in the Changelog with By = Dipti, which is how the North Star gets measured.
 - No scrolling anywhere except the chat thread (D14). `scripts/noscroll.mjs` checks every screen, list page, sheet, panel and flow at 12 sizes (320×568 to 1920×1080, portrait and landscape), with her real record loaded locally only.
 
-Results (8 Nov, invented fixture only): `npm test` 109/109, `node scripts/simulate.mjs` 30/30, and `scripts/noscroll.mjs` with no new failures (see HANDOVER for the pre-existing 568×320 one). Earlier (24 Oct): and `scripts/noscroll.mjs` clean at all 12 sizes on her real record (about 1,200 screens, both logins), plus the invented fixture and an empty record.
+Results (8 Nov, invented fixture): `npm test` 111/111 (also under TZ=Asia/Kolkata), `node scripts/simulate.mjs` 30/30, `scripts/noscroll.mjs` (see HANDOVER). Earlier (24 Oct): and `scripts/noscroll.mjs` clean at all 12 sizes on her real record (about 1,200 screens, both logins), plus the invented fixture and an empty record.
 
 ## What changed recently
 
-- 8 Nov 2026: input audit. Dates and times now come back from the Sheet as typed; new medicines are not asked about straight away; after each check-in she sees how today compares with her own recent days; Today and My care carry her check-in trends; check-in notes reach her history and Ellie (D46–D49).
+- 8 Nov 2026: input audit against her real Sheet. Dates and times come back as typed; "Still right?" no longer loses answers to a second tap; she can record stopping a medicine that is not on her list; a check-in note that names a medicine offers to update it; Ellie no longer re-adds questions she already has; after each check-in she sees how today compares with her own recent days, and Today and My care carry her trends (D46–D53).
 
 - 23 Oct 2026: first build. See `docs/DECISIONS.md` (D1–D11).
 - 23 Oct 2026 (later): Conditions tab, no-scroll on every device, header-based Sheet columns (D12–D17). Deployed to Vercel; xrds.au is attached but its DNS is not working yet.
@@ -57,7 +57,8 @@ Results (8 Nov, invented fixture only): `npm test` 109/109, `node scripts/simula
 
 ## What is next and waiting on Krish
 
-0. Paste the new `apps-script/Code.gs` (version 2026-11-08), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app already repairs dates on the server, but times are exact only with the new script.
+0. Merge `ccr-37a2b70e-959prm` into the production branch. Then paste the new `apps-script/Code.gs` (version 2026-11-08), run `setup()`, and publish a new version of the deployment. Settings will say the Sheet is out of date until then. The app repairs dates on the server, but times are exact only with the new script.
+0b. On her Medications tab, five rows she confirmed on 26 Oct have no CheckedAt (lost to the double-tap bug, D50), so she will be asked about them again; that is expected and harmless. Her latest check-in note mentions a dose change that is not on her list yet.
 
 1. Paste the new `apps-script/Code.gs`, run `setup()` (it adds the `_Journal` tab, and Feedback, `_Chats` and `_Ops` if missing), and publish a new version of the deployment. Until then the app works through fallbacks, but replays are not de-duplicated and Feedback cannot save.
 2. Share the Sheet with Dipti as an editor, then give her `DIPTI_CODE`.

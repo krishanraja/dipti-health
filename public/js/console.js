@@ -35,6 +35,7 @@ const draft = {
 
 export function openConsole(start) {
   if (start === 'journal') return journal();
+  if (typeof start === 'string' && start.startsWith('med:')) return medChange(ctx.canon() || {}, start.slice(4));
   const canon = ctx.canon() || {};
   const day = localDay(new Date());
   const checked = (canon.checkins || []).some(c => localDay(c.tsUTC || c.tsLocal) === day);
@@ -84,17 +85,17 @@ function saved(r, title, extra = '') {
 }
 
 /* ---------- a medicine change ---------- */
-function medChange(canon) {
+function medChange(canon, preset = '') {
   const cur = medicines(canon).current;
   const m = {};
   const step1 = () => flow(`${head()}<h1>Which medicine?</h1>
     <div class="pick" data-pick></div>`, l => {
     l.querySelector('[data-back]').onclick = openConsole;
-    const items = [...cur.map(x => ({ v: x.name, t: x.name, s: [x.dose, x.timing].filter(Boolean).join(' · ') })), { v: '', t: 'A new medicine', s: 'Not on my list yet' }];
+    const items = [...cur.map(x => ({ v: x.name, t: x.name, s: [x.dose, x.timing].filter(Boolean).join(' · ') })), { v: '', t: 'One not on this list', s: 'Started or stopped' }];
     // Her list can be long: it pages, two to a row, never scrolls.
     pager(l.querySelector('[data-pick]'), items.map(i => ({ html: `<button class="o pk" data-m="${esc(i.v)}"><b>${esc(i.t)}</b>${i.s ? `<small>${esc(i.s)}</small>` : ''}</button>` })), {
       label: 'Medicines',
-      onRender: body => body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { m.name = b.dataset.m; m.isNew = !m.name; m.isNew ? step3() : step2(); }),
+      onRender: body => body.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { m.name = b.dataset.m; m.isNew = !m.name; m.isNew ? stepNew() : step2(); }),
     });
   });
   const step2 = () => flow(`${head()}<p class="kicker">${esc(m.name)}</p><h1>What changed?</h1><div class="opts">
@@ -106,6 +107,30 @@ function medChange(canon) {
       save({ name: m.name, status: m.change === 'stopped' ? 'stopped' : 'check', checked: true }, m.change === 'stopped' ? `${m.name} marked as stopped` : `${m.name} marked to check`);
     });
   });
+  // Not on her list: one she has started, or one she has stopped. Her
+  // feedback (26 Oct) asked where to record stopping a medicine that was not
+  // on her list; there was nowhere.
+  const stepNew = () => flow(`${head()}<h1>Started or stopped?</h1><div class="opts">
+      <button class="o" data-n="started">I've started a new one</button><button class="o" data-n="stopped">I've stopped one</button></div>`, l => {
+    l.querySelector('[data-back]').onclick = step1;
+    l.querySelectorAll('[data-n]').forEach(b => b.onclick = () => (b.dataset.n === 'started' ? step3() : stepStopped()));
+  });
+  const stepStopped = () => flow(`${head()}<h1>Which medicine did you stop?</h1>
+      <div class="form">
+        <label>Name<input id="mName" maxlength="60" placeholder="e.g. the cholesterol tablet" autocomplete="off"></label>
+        <label>When did you stop?<input id="mWhen" maxlength="60" placeholder="e.g. about a week ago"></label>
+      </div>
+      <button class="btn primary" data-save>Save</button>`, l => {
+    l.querySelector('[data-back]').onclick = stepNew;
+    l.querySelector('#mName').focus();
+    l.querySelector('[data-save]').onclick = () => {
+      const v = id => l.querySelector(id)?.value.trim() || '';
+      const name = v('#mName'), when = v('#mWhen');
+      if (!name) { ctx.toast('Add the medicine name'); return; }
+      save({ name, status: 'stopped', checked: true }, `${name} marked as stopped`,
+        `MEDICINE CHANGE: Stopped ${name}${when ? ', ' + when : ''} (it was not on her list).`);
+    };
+  });
   const step3 = () => {
     const was = cur.find(x => x.name === m.name) || {};
     flow(`${head()}<h1>${m.isNew ? 'The new medicine' : `New dose for ${esc(m.name)}`}</h1>
@@ -115,7 +140,7 @@ function medChange(canon) {
         <label>When<input id="mTime" maxlength="60" value="${esc(m.isNew ? '' : was.timing || '')}" placeholder="e.g. morning, after food"></label>
       </div>
       <button class="btn primary" data-save>Save</button>`, l => {
-      l.querySelector('[data-back]').onclick = m.isNew ? step1 : step2;
+      l.querySelector('[data-back]').onclick = m.isNew ? stepNew : step2;
       (l.querySelector('#mName') || l.querySelector('#mDose')).focus();
       l.querySelector('[data-save]').onclick = () => {
         const v = id => l.querySelector(id)?.value.trim() || '';
@@ -125,13 +150,22 @@ function medChange(canon) {
       };
     });
   };
-  async function save(payload, title) {
+  // One save per tap: the Sheet takes a few seconds, and her Changelog shows
+  // each medicine saved twice while the button sat there.
+  let busy = false;
+  async function save(payload, title, note = '') {
+    if (busy) return;
+    busy = true;
+    document.querySelectorAll('.flow [data-save], .flow [data-ch]').forEach(b => { b.disabled = true; if (b.matches('[data-save]')) b.textContent = 'Saving…'; });
     const r = await ctx.save('medication', payload);
+    if (note) await ctx.addNote('record', note);
     const list = (canon.medications ||= []);
     const row = list.find(x => x.name === payload.name);
     if (row) Object.assign(row, payload); else list.push({ ...payload });
     saved(r, title);
   }
+  // Opened from a check-in note that named this medicine: start at "what changed".
+  if (preset && cur.some(x => x.name === preset)) { m.name = preset; return step2(); }
   step1();
 }
 

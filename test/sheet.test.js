@@ -188,12 +188,10 @@ test('a medicine or priority she has just added is not asked about straight away
 
 test('the server repairs dates an older Code.gs sent as long date strings', async () => {
   const { cleanCell, cleanCanon } = await import('../lib/sheet.js');
-  // An older script on a UTC clock: midnight on the Sheet clock is 18:30 the day before.
-  assert.equal(cleanCell('Wed Nov 11 2026 18:30:00 GMT+0000 (Coordinated Universal Time)', 'date'), '2026-11-12');
-  assert.equal(cleanCell('Thu Nov 12 2026 00:00:00 GMT+0530 (India Standard Time)', 'date'), '2026-11-12');
-  assert.equal(cleanCell('Sat Dec 30 1899 14:30:00 GMT+0553 (India Standard Time)', 'time'), '14:30');
-  assert.equal(cleanCell('Sun Nov 08 2026 14:30:00 GMT+0530 (India Standard Time)', 'tsLocal'), '2026-11-08 14:30');
-  assert.equal(cleanCell('Sun Nov 08 2026 14:30:00 GMT+0530 (India Standard Time)', 'tsUTC'), '2026-11-08T09:00:00.000Z');
+  assert.equal(cleanCell('Thu Nov 12 2026 00:00:00 GMT-0800 (Pacific Standard Time)', 'date'), '2026-11-12');
+  assert.equal(cleanCell('Sat Dec 30 1899 14:30:00 GMT-0752 (Pacific Standard Time)', 'time'), '14:30');
+  assert.equal(cleanCell('Sun Nov 08 2026 14:30:00 GMT-0800 (Pacific Standard Time)', 'tsLocal'), '2026-11-08 14:30');
+  assert.equal(cleanCell('Sun Nov 08 2026 01:00:00 GMT-0800 (Pacific Standard Time)', 'tsUTC'), '2026-11-08T09:00:00.000Z');
   assert.equal(cleanCell('Plain text', 'notes'), 'Plain text');
   const c = cleanCanon({ ok: true, appointments: [{ date: 'Thu Nov 12 2026 00:00:00 GMT+0530 (India Standard Time)', with: 'X' }], meta: { a: 'b' }, sheetUrl: 'u' });
   assert.deepEqual(c.appointments[0], { date: '2026-11-12', with: 'X' });

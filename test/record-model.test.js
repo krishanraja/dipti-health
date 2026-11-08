@@ -91,3 +91,17 @@ test('what she adds at the end of a check-in shows in her history and reaches El
   assert.match(historyEvents(canon)[0].detail, /Tooth worse after cold water/);
   assert.match(bankText(bank(canon)), /At a check-in: Tooth worse after cold water/);
 });
+
+test('questions from a chat that are already on her list are not added again', async () => {
+  const { newQuestions } = await import('../public/js/record-model.js');
+  const canon = { questions: [
+    { question: 'Can the invented test be repeated before the next visit, or should it wait?', status: 'open' },
+    { question: 'What are the chances the example problem settles in a year, compared with treating it now?', status: 'open' },
+  ] };
+  assert.deepEqual(newQuestions(canon, [
+    'Can the invented test be repeated before the next visit, or should it wait?',
+    'What are the chances the example problem settles in a year, compared with having it treated now?',
+    'Which night guard do you recommend?',
+    'Which night guard do you recommend?',
+  ]), ['Which night guard do you recommend?']);
+});

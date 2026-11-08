@@ -86,3 +86,15 @@ export function historyEvents(canon) {
   return ev.filter(e => e.key).sort((a, b) => (b.key - a.key) || String(b.ts).localeCompare(String(a.ts)))
     .map(e => ({ ...e, date: fmtDate(String(e.key).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'), { year: true }) }));
 }
+
+// Questions from a chat that are not already on her list. Ellie re-suggested
+// two she already had (seen 24 Oct); near-identical wording counts as the
+// same question.
+const qWords = s => new Set((String(s).toLowerCase().match(/[a-z0-9]{3,}/g) || []));
+export function newQuestions(canon, qs) {
+  const have = (canon?.questions || []).filter(q => q.status !== 'answered').map(q => qWords(q.question));
+  const same = (a, b) => { let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.max(a.size, b.size, 1) >= 0.75; };
+  const out = [];
+  for (const q of qs || []) { const w = qWords(q); if (!have.some(h => same(w, h))) { out.push(q); have.push(w); } }
+  return out;
+}

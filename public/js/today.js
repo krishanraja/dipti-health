@@ -8,7 +8,7 @@ import { CONTACTS_SELF, CONTACTS, SICK_DAY } from './triage.js';
 import { DOCTOR } from './persona.js';
 import { renderDashboard } from './dashboard.js';
 import { factsToday, writesFor, needsEdit, applyLocal, nextAppointment, whenText, dayOf } from './facts-model.js';
-import { afterCheckin, todayTrend } from './insights-model.js';
+import { afterCheckin, todayTrend, medsMentioned } from './insights-model.js';
 
 let ctx, root, flowOpen = false;
 const $ = (s, el = root) => el.querySelector(s);
@@ -202,7 +202,9 @@ export function startCheckin() {
         const verdict = r.ok ? r.out.verdict : (a.bowels === 'diarrhoea' ? 'Act-today' : 'Saved offline');
         const canon = ctx.canon();
         // Compared with her own recent days, before today's is added.
-        const read = afterCheckin(canon || {}, a);
+        const read = { ...afterCheckin(canon || {}, a), meds: medsMentioned(canon || {}, notes).slice(0, 1) };
+        // The medicine prompt replaces the days line: it is the one to act on.
+        if (read.meds.length) read.lines = [...read.lines.filter(l => !/checked in this week/.test(l) && !/about your usual/.test(l)).slice(0, 3), `Your note mentions ${read.meds[0]}. Dose changed? Put it on your list.`];
         if (canon) (canon.checkins || (canon.checkins = [])).push({ tsUTC: new Date().toISOString(), by: ctx.who(), ...a, verdict, notes });
         checkinResult(verdict, a, r.ok, read);
         if (r.ok) ctx.reload();
@@ -224,8 +226,10 @@ function checkinResult(verdict, a, ok, read = { lines: [] }) {
     ${read.lines.length ? `<ul class="ci-read">${read.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
     ${lvl === 'urgent' ? `<div class="who">${c.lines.map(l => `<span>${esc(l)}</span>`).join('')}</div>` : ''}
     <p class="meta">${ok ? 'Saved to your Sheet.' : 'Saved on this device. It will send when you are online.'}</p></section>
-    <div class="row"><button class="btn" data-ask>${ICO.chat}Talk it through</button><button class="btn primary grow" data-x>Done</button></div>`, layer => {
-    layer.querySelector('[data-ask]').onclick = () => { closeFlow(); ctx.openAsk(`I just checked in: tooth ${a.tooth}, tummy ${a.abdomen}, tiredness ${a.fatigue}, sleep ${a.sleep}. Anything I should do today?`); };
+    <div class="row">${read.meds?.length ? `<button class="btn" data-med>Update my list</button>` : `<button class="btn" data-ask>${ICO.chat}Talk it through</button>`}<button class="btn primary grow" data-x>Done</button></div>`, layer => {
+    layer.querySelector('[data-ask]')?.addEventListener('click', () => { closeFlow(); ctx.openAsk(`I just checked in: tooth ${a.tooth}, tummy ${a.abdomen}, tiredness ${a.fatigue}, sleep ${a.sleep}. Anything I should do today?`); });
+    // Her note named a medicine on her list: put the change on the list too.
+    layer.querySelector('[data-med]')?.addEventListener('click', () => ctx.openConsole(`med:${read.meds[0]}`));
   });
 }
 
@@ -280,17 +284,23 @@ export function factFlow(list) {
   if (!list?.length) return;
   let i = 0, worse = [];
   const total = list.length;
-  const apply = async (f, answer, edit) => {
-    const { writes, said, worse: w } = writesFor(f, answer, edit);
+  // The next question shows at once and the Sheet catches up behind it. A
+  // Sheet write takes a few seconds; waiting for it left the old question on
+  // screen, so a second tap re-saved it and skipped the next one (seen in her
+  // Changelog: one medicine "still right" five times, four others never saved).
+  let sending = Promise.resolve(), queued = false;
+  const apply = (f, answer, edit) => {
+    document.querySelectorAll('.flow [data-a], .flow [data-save]').forEach(b => { b.disabled = true; });
+    const { writes, worse: w } = writesFor(f, answer, edit);
     const canon = ctx.canon();
     if (canon) applyLocal(canon, writes);
     if (w) worse.push(f);
-    let queued = false;
-    for (const x of writes) {
-      const r = x.action === 'note' ? await ctx.addNote(x.payload.tag, x.payload.text) : await ctx.save(x.action, x.payload);
-      if (!r.ok) queued = true;
-    }
-    ctx.toast(queued ? 'Saved on this device, will sync' : said || 'Saved');
+    sending = sending.then(async () => {
+      for (const x of writes) {
+        const r = x.action === 'note' ? await ctx.addNote(x.payload.tag, x.payload.text) : await ctx.save(x.action, x.payload);
+        if (!r.ok) queued = true;
+      }
+    });
     i++; step();
   };
   const step = () => {
@@ -324,6 +334,7 @@ export function factFlow(list) {
     });
   };
   const done = () => {
+    sending.then(() => ctx.toast(queued ? 'Saved on this device, will sync' : 'Saved to your Sheet ✓'));
     const w = worse[0];
     flow(`<section class="kc level routine"><h1>${w ? 'Thanks. Noted.' : 'All checked ✓'}</h1>
       <p>${w ? `You said ${esc(w.row.title.replace(/\s*\(.*?\)\s*/g, ' ').trim().toLowerCase())} is worse. Logging it gives ${esc(DOCTOR.first)} and your doctors the detail.` : `Your Sheet is up to date. Thank you${you() ? '' : ' for helping'}.`}</p></section>
