@@ -667,3 +667,13 @@ h1, .hello h1, .sheet-title, .zhead h2, .flow h1, .ctitle { font-family: var(--s
 .story-h { padding: 10px 2px 2px; }
 .story-row { padding: 8px 0; }
 @media (min-width: 1024px) and (max-height: 820px) { .facts-card .dq small { display: none; } }
+/* Phones on their side: an area's page sits side by side, as one condition
+   does (.zoom). Stacked, the title and "What's next" left about 30 px for the
+   story list, so every story item was cut off (no-scroll check, 568×320). */
+@media (orientation: landscape) and (max-height: 500px) {
+  .area-view { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); grid-template-rows: auto auto auto 1fr; column-gap: 16px; row-gap: 6px; }
+  .area-view > .back, .area-view > .hello, .area-view > .next-card, .area-view > .area-foot { grid-column: 1; }
+  .area-view > .area-foot { align-self: end; }
+  .area-view > .area-list { grid-column: 2; grid-row: 1 / -1; min-height: 0; }
+  .area-view .hello h1 { font-size: 24px; }
+}

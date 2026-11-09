@@ -22,7 +22,7 @@
 - [ ] Not run: `scripts/noscroll.mjs` on her real record (it needs her record loaded locally; this session only read it through the Sheets connector). Ran on the invented fixture.
 - [ ] Real-model check: none of this changes Ellie's prompt, but `bankText` now carries her check-in notes; watch the first replies.
 - [ ] Only two check-ins in her Sheet so far: the new trend lines need a few more before they say much. Worth asking Krish whether a gentle evening check-in reminder is wanted.
-- [ ] Pre-existing, not from this change: `noscroll --quick` flags "care area hormones" pages at 568×320 as too tall (fixture data). Present on 0a768ae before these edits.
+- [x] Fixed 9 Nov: care area pages on landscape phones (568×320 flagged "too tall") now sit side by side, title and next step left, the story list right (end of `public/ds.css`). `noscroll --only=568x320,844x390`: 157 screens clean.
 - [ ] The wide overview (`dashboard.js`) does not show the new trend line yet.
 
 ## 2026-10-24 (night): calm by default (D38–D43)
