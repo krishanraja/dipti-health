@@ -1,5 +1,11 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-11-09: text takes the room it needs (D55)
+
+- [x] `public/js/record.js`: `.rec-home` is a `.fit` box; `ctx.fit` after render. Rules at the end of `public/ds.css` (phones, portrait): rows `minmax(min-content, 1fr)`, tile subtitles and care summaries up to two lines.
+- [x] `scripts/noscroll.mjs` checks 358×644 (a phone with larger text or zoom), also in `--quick`. 9 phone sizes: 620 screens clean (fixture).
+- [ ] Not checked on her real record in the browser; her summaries are longer than the fixture's, so some will end in "…" after two lines.
+
 ## 2026-11-08 (later): daily check-in reminder (D54)
 
 - [x] `dailyReminder`, `setupReminder`, `stopReminder` in Code.gs; emulator has `MailApp` and `ScriptApp`; test in `test/sheet.test.js`.

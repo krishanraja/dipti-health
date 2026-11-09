@@ -677,3 +677,16 @@ h1, .hello h1, .sheet-title, .zhead h2, .flow h1, .ctitle { font-family: var(--s
   .area-view > .area-list { grid-column: 2; grid-row: 1 / -1; min-height: 0; }
   .area-view .hello h1 { font-size: 24px; }
 }
+/* Text takes the room it needs. Seen on her phone (9 Nov), with larger text
+   on: the record tiles were fixed quarters of the height, so the last row
+   was cut mid-line, and My care held every summary to one line, with empty
+   space below both. Phones, portrait. */
+@media (max-width: 1023px) and (orientation: portrait) {
+  /* Rows grow to their content; if all four cannot fit, fit() shrinks the
+     text a step at a time instead of cropping it. */
+  .rec-home.fit { font-size: min(var(--fs, 17px), clamp(12px, 2.5dvh, 17px)); }
+  .rec-tiles { grid-template-rows: repeat(4, minmax(min-content, 1fr)); }
+  .rec-tiles .tile-sub { -webkit-line-clamp: 2; }
+  /* A care summary may use two lines; the pager measures and pages on that. */
+  .care .area-t small { -webkit-line-clamp: 2; }
+}

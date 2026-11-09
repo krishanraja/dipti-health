@@ -225,7 +225,7 @@ function render() {
   const ev3 = historyEvents(canon).slice(0, 3);
   const checked = m.current.map(x => x.checked).filter(Boolean).sort();
   const n = nextAppointment(canon);
-  root.innerHTML = `<div class="rec-home">
+  root.innerHTML = `<div class="rec-home fit">
     <div class="rec-head"><div class="hello"><h1>${you() ? 'Your' : "Dipti's"} record</h1><p>Everything in ${you() ? 'your' : 'her'} Sheet, kept tidy.</p></div>
       <div class="rec-actions">${sheetUrl() ? `<a class="btn" href="${esc(sheetUrl())}" target="_blank" rel="noopener">${ICO.sheet}Open my Sheet</a>` : ''}<button class="btn" data-brief="">${ICO.share}Note for a doctor</button></div></div>
     <div class="tiles rec-tiles">
@@ -236,10 +236,13 @@ function render() {
       ${tile('appointments', 'Appointments', n ? short(n.with) : 'Nothing booked', n ? whenText(n.date, n.time) : 'Add one with +', ap.slice(1, 4).map(a => `${whenText(a.date, a.time)} · ${a.with}`))}
       ${tile('doctors', 'Doctors', 'Your team', 'Who looks after what', (canon.clinicians || []).slice(0, 3).map(c => short(c.name)))}
       ${tile('history', 'History', "What you've added", lastEv ? `Latest ${lastEv.date.replace(/ \d{4}$/, '')}` : 'Nothing yet', ev3.map(e => e.title))}
-      ${tile('gaps', 'To tidy up', gaps ? 'A few details' : 'All tidy', gaps ? 'For your doctors to confirm. Nothing urgent.' : 'Nothing to confirm', [], 'quiet-tile')}
+      ${tile('gaps', 'To tidy up', gaps ? 'A few details' : 'All tidy', gaps ? 'Nothing urgent. Ask at a visit.' : 'Nothing to confirm', [], 'quiet-tile')}
     </div>
   </div>`.replace('for her doctors', you() ? 'for your doctors' : "for Dipti's doctors");
   root.querySelectorAll('[data-go]').forEach(b => b.onclick = () => (b.dataset.go === 'conditions' ? ctx.go('conditions') : recordSpoke(b.dataset.go)));
   root.querySelector('[data-brief]').onclick = () => ctx.shareBrief();
+  // Text gets the room it needs; only if all eight tiles cannot fit does it
+  // shrink a little (never below the floor), so nothing is cut mid-line.
+  requestAnimationFrame(() => ctx.fit(root.querySelector('.rec-home')));
 }
 

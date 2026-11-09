@@ -19,6 +19,7 @@ What her Sheet showed (to 8 Nov): entries on 23–24 Oct, 26–27 Oct and 3 Nov;
 | D52 | When a check-in note names a medicine on her list (brand or generic), the result offers "Update my list", opening that medicine's change screen | Claude, from her check-ins | Her 27 Oct note recorded a dose change that never reached her list |
 | D53 | Questions Ellie suggests that are already on her list (near-identical wording) are not added again | Claude, from her Questions tab | Two of her questions were added twice |
 | D54 | A daily check-in reminder: one email at about 7 pm India time, only on a day with no check-in, sent by the Sheet's script. It says nothing about her health and opens the check-in in one tap (`?checkin=1`). Off until Krish sets REMINDER_TO and runs `setupReminder()` | Krish asked for it; Claude chose email | Two check-ins in her first fortnight. Email needs no new keys, service or install; web push would need a home-screen install on iPhone, push keys and a scheduler. Revisit if she ignores the emails for two weeks |
+| D55 | Text takes the room it needs. On phones the record tiles grow to their text and shrink it a step only if all eight cannot fit; care summaries may wrap to two lines. The no-scroll check now includes a phone with larger text (358×644) | Claude, from Krish's screenshots (9 Nov) | With larger text on, fixed-height tiles cut text mid-line and one-line summaries were cut short while space sat empty. The empty strip at the bottom is kept: it is the + button's room |
 
 ## 2026-10-24 (night): calm by default
 

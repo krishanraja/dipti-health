@@ -19,7 +19,10 @@ const VIEWPORTS = [
   [768, 1024], [1024, 768], [1280, 800], [1440, 900], [1920, 1080],
   // Laptops with the browser's own bars taking height.
   [1366, 657], [1440, 760], [1280, 680],
-].filter((_, i) => !QUICK || [0, 5, 8].includes(i));
+  // A phone with larger text or page zoom on (about 115%): the page is
+  // smaller in CSS pixels. Her phone, 9 Nov.
+  [358, 644],
+].filter((_, i) => !QUICK || [0, 5, 8, 15].includes(i));
 // --only=320x568,844x390 checks just those sizes.
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 if (ONLY.length) VIEWPORTS.splice(0, VIEWPORTS.length, ...ONLY.map(v => v.split('x').map(Number)));
