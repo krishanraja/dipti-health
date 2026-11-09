@@ -1,5 +1,9 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-11-09: branches
+
+- [x] The repo deletes a branch when its pull request merges (on since 9 Nov). Merge into `main` by pull request (see `AGENTS.md`); `main` should be the only branch left.
+
 ## 2026-11-09: text takes the room it needs (D55)
 
 - [x] `public/js/record.js`: `.rec-home` is a `.fit` box; `ctx.fit` after render. Rules at the end of `public/ds.css` (phones, portrait): rows `minmax(min-content, 1fr)`, tile subtitles and care summaries up to two lines.
