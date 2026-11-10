@@ -5,6 +5,8 @@
 // Simplicity rules: at most 3 items per card before "more", one accent
 // colour, urgency colours only for genuine flags.
 import { priorities, medicines, questionsByDoctor, openGaps, historyEvents } from './record-model.js';
+import { pauseOf, pauseLine } from './pause-model.js';
+import { dayOf } from './facts-model.js';
 import { resultCards, fmtDate, cardLabel } from './metrics.js';
 import { lastCheckin, scoreSeries, localDay, TZ } from './dipti-model.js';
 import { entitiesIn, related, sourcesFor, GRADE_LABEL } from './evidence.js';
@@ -47,6 +49,8 @@ export function renderDashboard(el, context) {
   }
   const you = ctx.me().dipti;
   const pr = priorities(canon).filter(p => p.status !== 'done');
+  pr.forEach(p => { p.paused = pauseOf(canon, p, dayOf()); });
+  const leadId = pr.find(p => !p.paused)?.id;
   const ci = lastCheckin(canon);
   const checkedToday = ci && localDay(ci.ts) === localDay(new Date());
   const meds = medicines(canon);
@@ -105,8 +109,8 @@ export function renderDashboard(el, context) {
 
   const lists = {
     prios: pr.map((p, i) => `<button class="dp" data-p="${esc(p.id)}">
-      <span class="dp-top"><b>${esc(String(p.title).replace(/\s*\(.*\)\s*$/, ''))}</b><i class="ctag ${p.status === 'waiting' ? 'wait' : p.status === 'better' ? 'ok' : 'hand'}">${p.status === 'waiting' ? 'Waiting' : p.status === 'better' ? 'Getting better' : 'In hand'}</i></span>
-      ${p.nextStep ? `<span class="dp-next">${i === 0 ? '<span class="lbl">Today\'s one step</span> ' : ''}${esc(p.nextStep)}</span>` : ''}
+      <span class="dp-top"><b>${esc(String(p.title).replace(/\s*\(.*\)\s*$/, ''))}</b><i class="ctag ${p.paused ? 'quiet' : p.status === 'waiting' ? 'wait' : p.status === 'better' ? 'ok' : 'hand'}">${p.paused ? 'Set aside' : p.status === 'waiting' ? 'Waiting' : p.status === 'better' ? 'Getting better' : 'In hand'}</i></span>
+      ${p.nextStep ? `<span class="dp-next">${p.paused ? esc(pauseLine(p.paused)) : `${p.id === leadId ? '<span class="lbl">Today\'s one step</span> ' : ''}${esc(p.nextStep)}`}</span>` : ''}
     </button>`),
     meds: meds.current.map((m, i) => `<button class="medrow" data-m="${i}"><span><b>${esc(m.name)}</b>${m.generic ? `<small>${esc(m.generic)}</small>` : ''}</span><span>${esc(`${m.dose} ${m.timing}`.trim())}${m.differs ? `<small class="ask">Prescription: ${esc(m.rx || 'not on it')}</small>` : ''}</span><span>${esc(String(m.purpose || '').split(/[.;]\s/)[0])}</span></button>`),
     qs: qg.map(g => `<button class="dq" data-q="${esc(g.who)}"><b>${esc(g.who)}</b><span>${esc(g.questions[0].question)}</span>${g.questions.length > 1 ? '<small>and more for later</small>' : ''}</button>`),

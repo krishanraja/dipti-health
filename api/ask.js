@@ -12,6 +12,8 @@ import { replyStream } from '../lib/reply-stream.js';
 import { RESULTS_RULES, cleanResults, imageBlock, checkImage } from '../lib/photo.js';
 import { triage, maxLevel, LEVELS, CONTACTS, CONTACTS_SELF, SICK_DAY } from '../public/js/triage.js';
 import { bank, bankText, facts, factNote, FACT_TOPICS } from '../public/js/knowledge-bank.js';
+import { pauseOf } from '../public/js/pause-model.js';
+import { dayOf } from '../public/js/facts-model.js';
 import { localDay, repeatAsk } from '../public/js/dipti-model.js';
 import { evidenceText, entitiesIn, related } from '../public/js/evidence.js';
 import { person } from '../public/js/people.js';
@@ -27,10 +29,11 @@ export function patientContext(canon) {
     .map(([k, v]) => `${k}: ${v}`).join('\n');
   const rows = (arr, n, fn) => (arr || []).slice(-n).map(fn).join('\n') || '(none recorded)';
   const routine = /^(meds-taken|fact|concern)$/;
+  const today = dayOf();
   const meds = (canon.medications || []);
   return [
     '## Profile', profile || '(none)',
-    '## Her priorities right now (in her order)', rows([...(canon.priorities || [])].sort((a, b) => (+a.rank || 9) - (+b.rank || 9)), 10, p => `- ${p.id} [${p.status}] ${p.title}. Why: ${p.why} Plan: ${String(p.plan).replace(/\n/g, ' / ')} Next step: ${p.nextStep}${p.askWhom ? ' (' + p.askWhom + ')' : ''}`),
+    '## Her priorities right now (in her order)', rows([...(canon.priorities || [])].sort((a, b) => (+a.rank || 9) - (+b.rank || 9)), 10, p => { const z = pauseOf(canon, p, today); return `- ${p.id} [${p.status}] ${p.title}. Why: ${p.why} Plan: ${String(p.plan).replace(/\n/g, ' / ')} Next step: ${p.nextStep}${p.askWhom ? ' (' + p.askWhom + ')' : ''}${z ? ` [SHE HAS SET THIS STEP ASIDE ${z.until ? 'until ' + z.until : 'until she brings it back'}${z.reason ? '. Her reason: ' + z.reason : ''}. Respect it: do not push this step. You may help with other parts of the plan, and if she raises it, ask gently whether she wants to bring it back.]` : ''}`; }),
     '## Conditions (Doc = in a report; Stated = she said it)', rows(canon.conditions, 40, c => `- ${c.name} [${c.status}, ${c.evidence || '?'}] since ${c.since}. ${c.notes}`),
     '## Medicines: her current list, with what the last written prescription says', rows(meds.filter(m => m.status !== 'stopped'), 40, m => `- ${m.name}${m.generic ? ' (' + m.generic + ')' : ''}: ${m.dose} ${m.timing}. Prescription: ${m.rx || 'not on it'}. For: ${m.purpose}${m.status === 'check' ? ' [CHECK: differs from the prescription]' : ''}`),
     '## Stopped medicines', rows(meds.filter(m => m.status === 'stopped'), 30, m => `- ${m.name}: ${m.dose} ${m.timing}`),

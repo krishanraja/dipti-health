@@ -6,6 +6,7 @@ import { zoom, linkStory, KINDS, GROUPS } from './conditions-model.js';
 import { careAreas, areaOf, storyFor } from './care-model.js';
 import { questionsByDoctor } from './record-model.js';
 import { openPriority } from './today.js';
+import { pauseLine } from './pause-model.js';
 import { fmtDate, parseDate, cardLabel } from './metrics.js';
 import { pager } from './pager.js';
 import { DOCTOR } from './persona.js';
@@ -100,7 +101,7 @@ function areaLede(a) {
   return who + now;
 }
 function areaBody(a) {
-  return `${a.priority ? `<button class="next-card" data-prio="${esc(a.priority.id)}"><span class="lbl">What's next</span><b>${esc(a.priority.nextStep || a.priority.title)}</b></button>` : ''}
+  return `${a.priority ? `<button class="next-card" data-prio="${esc(a.priority.id)}"><span class="lbl">${a.priority.paused ? esc(pauseLine(a.priority.paused)) : "What's next"}</span><b>${esc(a.priority.nextStep || a.priority.title)}</b></button>` : ''}
     <div class="area-list"></div>
     ${a.doctor ? `<div class="area-foot"><button class="btn quiet" data-note="${esc(a.doctor)}">Write a note to ${esc(a.doctor)}</button></div>` : ''}`;
 }

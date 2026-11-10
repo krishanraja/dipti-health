@@ -290,7 +290,7 @@ function listen(onText, onState) {
 
 /* ---------------- views ---------------- */
 function openAsk(text) { go('ask'); sendToChat(text); }
-const ctx = () => ({ openConsole: k => openConsole(k), canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, factFlow, openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
+const ctx = () => ({ openConsole: k => openConsole(k), canon: () => canon, session: () => session, me, who, save, addNote, toast, fit, listen, openSheet, openAsk, go, isWide, shareBrief, recordSpoke, factFlow, refresh: () => refreshAll(), openCondition: id => { go('conditions'); openCondition(id); }, reload: () => loadCanon(), addPhoto: () => { go('ask'); photoToChat(); } });
 function buildToday() { mountToday($('#today'), ctx()); }
 function buildRecord() { mountRecord($('#rec'), ctx()); }
 function buildConditions() { mountConditions($('#conds'), ctx()); }

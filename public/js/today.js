@@ -9,6 +9,7 @@ import { DOCTOR } from './persona.js';
 import { renderDashboard } from './dashboard.js';
 import { factsToday, writesFor, needsEdit, applyLocal, nextAppointment, whenText, dayOf } from './facts-model.js';
 import { afterCheckin, todayTrend, medsMentioned } from './insights-model.js';
+import { pauseOf, pauseLine, pauseNote, resumeNote, untilFor, REASONS, WHEN as BACK, PAUSE, RESUME } from './pause-model.js';
 
 let ctx, root, flowOpen = false;
 const $ = (s, el = root) => el.querySelector(s);
@@ -55,22 +56,28 @@ function render() {
   // One calm line, one step for today, the rest in a quiet list. The focus
   // is the first priority's next step; the others say where they stand.
   const short = t => String(t || '').replace(/\s*\(.*\)\s*$/, '');
-  const tagOf = p => (p.status === 'waiting' ? ['wait', 'Waiting'] : p.status === 'better' ? ['ok', 'Getting better'] : ['hand', 'In hand']);
-  const [lead, ...rest] = pr;
+  // A step she has set aside ("Not now") gives way: the focus is the first
+  // step she has not set aside, and the set-aside one waits quietly below.
+  const today = dayOf();
+  pr.forEach(p => { p.paused = pauseOf(canon, p, today); });
+  const tagOf = p => (p.paused ? ['quiet', 'Set aside'] : p.status === 'waiting' ? ['wait', 'Waiting'] : p.status === 'better' ? ['ok', 'Getting better'] : ['hand', 'In hand']);
+  const lead = pr.find(p => !p.paused);
+  const rest = pr.filter(p => p !== lead);
   root.innerHTML = `<div class="fit today-home calm">
     <div class="hello"><p class="lbl">${esc(next ? `Next: ${next.with}, ${whenText(next.date, next.time)}` : date)}</p><h1>${esc(hello)}${name ? ', ' + esc(name) : ''}.</h1><p class="lede drop">${esc(todayLine(canon).replace('Everything else', pr.length ? 'Everything else' : 'Everything'))}</p></div>
     ${lead ? `<div class="focus" data-p="${esc(lead.id)}" role="button" tabindex="0">
         <span class="lbl">Today's one step</span>
         <b>${esc(lead.nextStep || short(lead.title))}</b>
-        <span class="focus-foot"><small>For ${you() ? 'your' : 'her'} ${esc(short(lead.title).toLowerCase())}</small><button class="done-it" data-done="${esc(lead.id)}">Done it</button></span>
+        <span class="focus-foot"><small>For ${you() ? 'your' : 'her'} ${esc(short(lead.title).toLowerCase())}</small><span class="focus-acts"><button class="not-now" data-notnow="${esc(lead.id)}">Not now</button><button class="done-it" data-done="${esc(lead.id)}">Done it</button></span></span>
       </div>` : ''}
-    ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small class="drop">${esc(p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
+    ${rest.length ? `<div class="also">${rest.map(p => { const [tone, text] = tagOf(p); return `<button class="also-row" data-p="${esc(p.id)}"><span class="area-t"><b>${esc(short(p.title))}</b><small class="drop">${esc(p.paused ? pauseLine(p.paused) : p.status === 'waiting' ? p.nextStep || 'Waiting on the next step' : p.nextStep ? 'Next: ' + p.nextStep.charAt(0).toLowerCase() + p.nextStep.slice(1) : '')}</small></span><i class="ctag ${tone}">${text}</i></button>`; }).join('')}</div>` : ''}
     ${checkedToday
       ? `<button class="kc checkin done" data-check><span><small>${trend ? `Checked in ✓ · ${esc(trend.replace(/ this week$/, ''))}` : "Today's check-in ✓"}</small><b>Tooth ${ci.tooth} · Tummy ${ci.abdomen} · Tiredness ${ci.fatigue}</b></span>${CHEV}</button>`
       : `<button class="kc checkin" data-check><span><small>${trend ? esc(trend) : '30 seconds'}</small><b>How are you today?</b></span><span class="go">Check in</span></button>`}
     ${facts.length ? `<button class="facts-line" data-facts><span>Still right? ${facts.length} quick check${facts.length === 1 ? '' : 's'}</span>${CHEV}</button>` : ''}
   </div>`;
   root.querySelector('[data-done]')?.addEventListener('click', e => { e.stopPropagation(); const p = pr.find(x => x.id === e.currentTarget.dataset.done); if (p) editNextStep(canon, p, true); });
+  root.querySelector('[data-notnow]')?.addEventListener('click', e => { e.stopPropagation(); const p = pr.find(x => x.id === e.currentTarget.dataset.notnow); if (p) notNow(p); });
   root.querySelectorAll('[data-p]').forEach(b => b.onclick = () => openPriority(b.dataset.p));
   $('[data-check]').onclick = startCheckin;
   root.querySelector('[data-facts]')?.addEventListener('click', () => factFlow(facts));
@@ -92,17 +99,19 @@ export function openPriority(id) {
   const p = priorities(canon).find(x => x.id === id);
   if (!p) return;
   const qs = questionsByDoctor(canon).filter(g => p.askWhom && g.who.toLowerCase().includes(p.askWhom.toLowerCase().split(/[,(]/)[0].trim())).flatMap(g => g.questions).slice(0, 4);
+  const pz = pauseOf(canon, p, dayOf());
   // What it is and where it stands first; the plan and questions page below;
   // the actions stay fixed at the bottom.
   ctx.openSheet(`<p class="kicker">Priority ${esc(p.rank || '')}</p><h3 class="sheet-title">${esc(p.title)}</h3>
     <div data-pages="${esc(p.title)}">
-      ${p.nextStep ? `<div class="answer-box"><p class="kicker">Next step</p><p>${esc(p.nextStep)}</p></div>` : ''}
+      ${p.nextStep ? `<div class="answer-box"><p class="kicker">${pz ? esc(pauseLine(pz)) : 'Next step'}</p><p>${esc(p.nextStep)}</p>${pz?.reason ? `<p class="soft">Why: ${esc(pz.reason)}</p>` : ''}</div>` : ''}
       ${p.why ? `<p class="soft">${esc(p.why)}</p>` : ''}
       ${p.steps.length ? `<p class="kicker" data-keep>The plan</p>${p.steps.map((s, i) => `<p class="qline"><span class="prio-n">${i + 1}</span>${esc(s)}</p>`).join('')}` : ''}
       ${qs.length ? `<p class="kicker" data-keep>To ask ${esc(p.askWhom)}</p>${qs.map(q => `<p class="qline dotq">${esc(q.question)}</p>`).join('')}` : ''}
     </div>
     <div class="sheet-foot"><p class="kicker">How is it going?</p><div class="choose" role="group" aria-label="How is it going?">${Object.entries(STATUS).map(([k, v]) => `<button class="st-${k}" data-st="${k}" aria-pressed="${p.status === k}"><i></i>${esc(v.label)}</button>`).join('')}</div>
-    <div class="row"><button class="btn" data-edit>${ICO.edit}Edit step</button><button class="btn" data-ask>${ICO.chat}Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
+    <div class="row"><button class="btn" data-edit>${ICO.edit}Edit step</button>${p.nextStep ? `<button class="btn" data-pause>${pz ? 'Bring it back' : 'Not now'}</button>` : ''}<button class="btn" data-ask>${ICO.chat}Ask ${esc(DOCTOR.first)}</button></div></div>`, (sheet, close) => {
+    sheet.querySelector('[data-pause]')?.addEventListener('click', () => { close(); pz ? bringBack(p) : notNow(p); });
     sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
       if (b.dataset.st === p.status) return;
       sheet.querySelectorAll('[data-st]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -130,6 +139,62 @@ function editNextStep(canon, p, done = false) {
       if (nextStep !== p.nextStep) savePriority(canon, p, { nextStep });
     };
   });
+}
+
+/* ---------- "Not now": set a step aside, with her reason if she wants ---------- */
+// One sheet: an optional reason (a tap, or her own words), when to bring it
+// back, and Save. Nothing is required but Save. It is a Notes row in her
+// words, so Ellie, her doctors' notes and the Sheet all see her choice.
+export function notNow(p) {
+  let reason = '', when = 'week';
+  ctx.openSheet(`<p class="kicker">Not now</p><h3 class="sheet-title">Set this step aside?</h3>
+    <div data-pages="Not now">
+      <p class="soft np-step">${esc(p.nextStep)}</p>
+      <p class="kicker" data-keep>Why? (optional)</p>
+      <div class="choose np-why" role="group" aria-label="Why">${REASONS.map(r => `<button data-why="${esc(r)}" aria-pressed="false">${esc(r)}</button>`).join('')}</div>
+      <div class="np-own"><textarea id="npText" rows="2" maxlength="300" placeholder="Or in your own words"></textarea><button class="micbtn" data-mic aria-pressed="false">${MIC}<span>Speak</span></button></div>
+      <p class="kicker" data-keep>Bring it back</p>
+      <div class="choose np-when" role="group" aria-label="Bring it back">${BACK.map(([k, t]) => `<button data-when="${k}" aria-pressed="${k === when}">${esc(t)}</button>`).join('')}</div>
+    </div>
+    <div class="row"><button class="btn ghost" data-close>Cancel</button><button class="btn primary grow" data-save>Set aside</button></div>`, (sheet, close) => {
+    // Her choices live here, not in the buttons: on a short screen the middle
+    // pages, and a page turn redraws it. Taps are caught on the whole sheet.
+    let own = '';
+    const sync = () => {
+      sheet.querySelectorAll('[data-why]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.why === reason)));
+      sheet.querySelectorAll('[data-when]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.when === when)));
+      // A box on screen holds the truth (typing and the microphone both write
+      // to it); a freshly drawn one gets back what she had written.
+      const ta = sheet.querySelector('#npText'), mic = sheet.querySelector('[data-mic]');
+      if (ta && ta.dataset.drawn === '1') own = ta.value;
+      else if (ta) { ta.dataset.drawn = '1'; ta.value = own; if (mic) wireMic(mic, ta); }
+    };
+    // Read the box before any page turn redraws it (capture runs first).
+    sheet.addEventListener('click', () => { const ta = sheet.querySelector('#npText'); if (ta?.dataset.drawn === '1') own = ta.value; }, true);
+    sheet.addEventListener('click', e => {
+      const w = e.target.closest('[data-why]'), n = e.target.closest('[data-when]');
+      if (w) reason = reason === w.dataset.why ? '' : w.dataset.why;
+      if (n) when = n.dataset.when;
+      sync();
+    });
+    sync();
+    sheet.querySelector('[data-save]').onclick = async e => {
+      e.currentTarget.disabled = true;
+      own = (sheet.querySelector('#npText')?.value ?? own).trim();
+      const why = [reason, own].filter(Boolean).join('. ');
+      const until = untilFor(when, dayOf());
+      close();
+      const r = await ctx.addNote(PAUSE, pauseNote(p, { reason: why, until }));
+      ctx.toast(r.ok ? 'Set aside. It is in your Sheet.' : 'Set aside on this device, will sync');
+      refreshToday(); ctx.refresh?.();
+    };
+  });
+}
+
+async function bringBack(p) {
+  const r = await ctx.addNote(RESUME, resumeNote(p));
+  ctx.toast(r.ok ? 'Back on your list' : 'Back on, will sync');
+  refreshToday(); ctx.refresh?.();
 }
 
 async function savePriority(canon, p, change) {

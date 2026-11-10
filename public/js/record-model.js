@@ -68,6 +68,8 @@ export function historyEvents(canon) {
     } else if (n.tag === 'record') {
       const change = /^MEDICINE CHANGE:/.test(text);
       ev.push({ key: k, ts: n.tsUTC, kind: 'note', title: change ? 'Medicine change' : 'Reported', detail: clip(text.replace(/^(REPORTED|MEDICINE CHANGE):\s*/, ''), 110) });
+    } else if (n.tag === 'step-paused' || n.tag === 'step-resumed') {
+      ev.push({ key: k, ts: n.tsUTC, kind: 'note', title: n.tag === 'step-paused' ? (n.by === 'Dipti' ? 'You set a step aside' : `${n.by} set a step aside`) : 'Step back on', detail: clip(noteSummary(n).replace(/^(SET ASIDE|BACK ON):\s*/, ''), 110) });
     } else if (n.tag === TAGS.journal) {
       ev.push({ key: k, ts: n.tsUTC, kind: 'note', title: n.by === 'Dipti' ? 'You wrote' : `${n.by} wrote`, detail: clip(text.replace(/\nJID: \S+$/, ''), 110) });
     } else if (n.tag === TAGS.says) {
