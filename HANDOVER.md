@@ -1,5 +1,12 @@
 # HANDOVER: for the next AI taking over
 
+## 2026-11-10: "Not now" (D56)
+
+- [x] `public/js/pause-model.js` (`pauseOf`, `pauseNote`, `resumeNote`, `untilFor`, `pauseLine`); tests in `test/pause-model.test.js`.
+- [x] Today: "Not now" beside "Done it"; the focus skips a set-aside step; the set-aside row reads "Set aside until …". Priority sheet: "Not now" or "Bring it back". Overview, My care and history respect it. `api/ask.js` tells Ellie not to push a set-aside step.
+- [x] The sheet pages on short screens; choices are kept across page turns (state in the closure, taps delegated). `scripts/noscroll.mjs` now opens the priority sheet (its old `.prio.lead` selector matched nothing) and the "Not now" sheet: 10 sizes, 767 screens clean.
+- [ ] Real-model check: how Ellie phrases things once a step is set aside.
+
 ## 2026-11-09: branches
 
 - [x] The repo deletes a branch when its pull request merges (on since 9 Nov). Merge into `main` by pull request (see `AGENTS.md`); `main` should be the only branch left.

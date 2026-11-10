@@ -5,6 +5,7 @@
 // after", which is true of everything in her record that has no open step.
 // Statuses only repeat what the Sheet says. Pure; unit tested.
 import { conditionList, doctorFor, groupOf } from './conditions-model.js';
+import { pauseOf, pauseLine } from './pause-model.js';
 import { areaCheckins } from './insights-model.js';
 
 // First match wins, in this order. The last area takes whatever is left.
@@ -29,6 +30,7 @@ export const TAG = {
   known: { text: 'Looked after', tone: 'ok' },
   long: { text: 'Long-term', tone: 'ok' },
   settled: { text: 'Settled', tone: 'quiet' },
+  aside: { text: 'Set aside', tone: 'quiet' },
 };
 const prTag = p => (p.status === 'waiting' ? TAG.waiting : p.status === 'better' ? TAG.better : TAG.now);
 
@@ -41,7 +43,7 @@ export function conditionTag(c) {
 
 const firstSentence = s => (String(s || '').match(/^.+?[.!?](\s|$)/) || [String(s || '')])[0].trim();
 
-export function careAreas(canon = {}) {
+export function careAreas(canon = {}, today = new Date().toISOString().slice(0, 10)) {
   const conds = conditionList(canon).flatMap(g => g.items);
   const live = [...(canon.priorities || [])].filter(p => p.status !== 'done').sort((a, b) => (+a.rank || 99) - (+b.rank || 99));
   const areas = AREAS.map(a => ({ ...a, conditions: [], priorities: [] }));
@@ -62,9 +64,10 @@ export function careAreas(canon = {}) {
     const allSettled = a.conditions.length && a.conditions.every(c => groupOf(c.status) === 'settled');
     const tag = p ? prTag(p) : allSettled ? TAG.settled : TAG.known;
     const what = a.conditions.slice(0, 3).map(c => c.short).join(', ').toLowerCase();
-    const summary = p ? [doctor, p.status === 'waiting' ? 'Waiting on the next step.' : p.nextStep].filter(Boolean).join('. ')
+    const paused = p ? pauseOf(canon, p, today) : null;
+    const summary = p ? [doctor, paused ? pauseLine(paused) + '.' : p.status === 'waiting' ? 'Waiting on the next step.' : p.nextStep].filter(Boolean).join('. ')
       : [doctor, what.charAt(0).toUpperCase() + what.slice(1)].filter(Boolean).join('. ');
-    return { ...a, doctor, now: Boolean(p), priority: p, tag, summary };
+    return { ...a, doctor, now: Boolean(p), priority: p ? { ...p, paused } : p, tag: paused ? TAG.aside : tag, summary };
   }).sort((x, y) => (y.now - x.now) || ((x.priority?.n ?? 99) - (y.priority?.n ?? 99)));
 }
 

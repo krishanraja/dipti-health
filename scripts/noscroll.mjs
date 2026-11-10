@@ -119,7 +119,8 @@ const closeLayer = async p => {
 async function phoneRun(p, vp) {
   const nav = name => visibleClick(p, `.nav-btn[data-go="${name}"]`);
   await nav('today'); await check(p, vp, 'today');
-  if (await visibleClick(p, '.prio.lead')) { await check(p, vp, 'priority sheet'); await closeLayer(p); }
+  if (await visibleClick(p, '.view:not([hidden]) .focus b')) { await wait(p, 300); await check(p, vp, 'priority sheet'); await closeLayer(p); }
+  if (await visibleClick(p, '.view:not([hidden]) [data-notnow]')) { await wait(p, 300); await check(p, vp, 'not now sheet'); await closeLayer(p); }
   if (await visibleClick(p, '.view:not([hidden]) [data-check]')) { await flowWalk(p, vp, 'check-in'); }
   if (await visibleClick(p, '.view:not([hidden]) [data-log]')) { await flowWalk(p, vp, 'log symptom'); }
   if (await visibleClick(p, '.view:not([hidden]) [data-facts]')) { await flowWalk(p, vp, 'still right?'); }

@@ -690,3 +690,22 @@ h1, .hello h1, .sheet-title, .zhead h2, .flow h1, .ctitle { font-family: var(--s
   /* A care summary may use two lines; the pager measures and pages on that. */
   .care .area-t small { -webkit-line-clamp: 2; }
 }
+/* "Not now" beside "Done it": quieter, same height. */
+.focus-acts { display: flex; gap: 8px; flex: none; }
+.not-now { min-height: 40px; padding: 0 14px; border: 1.5px solid rgba(255, 255, 255, .55); border-radius: 99px; background: transparent; color: #fff; font: 600 15px var(--sans); }
+.today-home.calm .not-now { min-height: 2.4em; font-size: .88em; padding: 0 .9em; }
+.np-step { font-style: italic; }
+.np-why, .np-when { flex-wrap: wrap; }
+.np-own { display: flex; gap: 8px; align-items: stretch; }
+.np-own textarea { flex: 1; min-height: 2.8em; }
+/* "Not now" sheet: two even columns that wrap long reasons, never wider than
+   the sheet. */
+.np-why, .np-when { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.np-why button, .np-when button { white-space: normal; text-align: left; line-height: 1.25; padding-top: 8px; padding-bottom: 8px; min-width: 0; }
+/* Three actions in one row (a priority with "Not now"): words only, so all
+   three fit a narrow phone. */
+.sheet-foot .row:has(> .btn:nth-child(3)) .btn { padding-left: 8px; padding-right: 8px; gap: 6px; }
+@media (max-width: 420px) { .sheet-foot .row:has(> .btn:nth-child(3)) .btn svg { display: none; } }
+.np-own { min-width: 0; }
+.np-own textarea { flex: 1 1 0; width: 0; min-width: 0; }
+.np-own .micbtn { flex: none; width: auto; }
